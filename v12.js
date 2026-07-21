@@ -13,6 +13,10 @@ import { openLetterPage2, LP2_LETTERS } from "./letterpage2.js?v=36";
 import { createField } from "./field.js?v=1";
 import { openNikud } from "./nikud.js?v=7";
 import { openAbout } from "./about.js?v=7";
+import { mountLogo } from "./logo.js?v=1";
+
+/* the brand mark stands in the top-right corner of every screen */
+mountLogo();
 
 const $ = (id) => document.getElementById(id);
 const dustEl = $("dust");
