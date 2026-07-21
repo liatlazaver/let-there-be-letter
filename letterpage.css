@@ -1,0 +1,889 @@
+/* ==========================================================================
+   ראש מילין — the letter page (v12)
+   A full-screen dark page over the same particle sky: the letter itself,
+   filled and extruded, turnable in place; its nikud orbiting a hidden
+   ellipse; its tagin; its foundation letters; and text that writes itself.
+   All geometry is on a 2880x1800 stage; --k maps design-px -> screen-px so
+   type and objects scale together as one composition.
+   ========================================================================== */
+
+.lp {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 460ms ease, visibility 0s linear 460ms;
+}
+body.lp-open .lp {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 520ms ease 100ms;
+}
+body.lp-open .world {
+  opacity: 0;
+  transform: scale(1.045);
+  pointer-events: none;
+}
+
+.lp-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, calc(100vh * (2880 / 1800)));
+  height: min(100vh, calc(100vw * (1800 / 2880)));
+  direction: rtl;
+}
+
+/* ---- back ---- */
+.lp-back {
+  position: absolute;
+  top: calc(var(--k, 0.5) * 90px);
+  left: calc(var(--k, 0.5) * 130px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  color: var(--fg-light);
+  font-family: "Editor Sans", sans-serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(var(--k, 0.5) * 30px);
+  letter-spacing: 0.12em;
+  opacity: 0.6;
+  transition: opacity 200ms ease;
+}
+.lp-back:hover { opacity: 1; }
+.lp-back .back-arrow { font-style: normal; }
+
+/* ---- the words: title + editorial body, top-right (per reference) ---- */
+.lp-title {
+  position: absolute;
+  right: 5.35%;
+  top: 9.7%;
+  color: var(--fg-light);
+  font-weight: 600;
+  font-size: calc(var(--k, 0.5) * 88px);
+  line-height: 1;
+  letter-spacing: 0.005em;
+  min-height: 1em;
+}
+.lp-body {
+  position: absolute;
+  right: 5.1%;
+  top: 16.6%;
+  width: 20.4%;
+  color: #f3f0e9;
+  font-weight: 300;
+  font-size: calc(var(--k, 0.5) * 29px);
+  line-height: 1.3;
+  text-align: right;
+  text-wrap: pretty; /* no single-word last line (widows/orphans) */
+}
+
+/* the typewriter voice */
+.lp-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  background: rgba(253, 252, 248, 0.9);
+  box-shadow: 0 0 6px rgba(253, 252, 248, 0.55);
+  margin-inline-start: 2px;
+  vertical-align: -0.15em;
+  animation: lp-blink 0.85s steps(1) infinite;
+}
+@keyframes lp-blink { 50% { opacity: 0; } }
+.lp-ch { animation: lp-ch-in 200ms ease-out both; }
+@keyframes lp-ch-in {
+  from { opacity: 0.25; text-shadow: 0 0 7px rgba(253, 252, 248, 0.75); }
+  to { opacity: 1; text-shadow: 0 0 0 rgba(253, 252, 248, 0); }
+}
+.lp-ch--scan { opacity: 0.55; }
+
+/* ---- the letter: filled, extruded, in its own 3D room ---- */
+.lp-room {
+  position: absolute;
+  perspective: 1700px;
+  cursor: none;
+}
+.lp-letter {
+  /* sized and centred by the script: every letter carries the shared
+     typographic scale of the ש master screen */
+  position: absolute;
+  transform-style: preserve-3d;
+}
+.lp-letter svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity 320ms ease;
+}
+.lp-layer { color: #565248; }
+.lp-fill { color: var(--fg-light); }
+.lp-stroke { color: var(--fg-light); opacity: 0; }
+
+.lp-constructing .lp-fill,
+.lp-constructing .lp-layer { opacity: 0; transition: none; }
+.lp-constructing .lp-stroke { opacity: 1; }
+.lp-built .lp-fill { opacity: 1; transition: opacity 640ms ease 80ms; }
+.lp-built .lp-layer { opacity: 1; transition: opacity 900ms ease; }
+.lp-built .lp-stroke { opacity: 0; transition: opacity 520ms ease 220ms; }
+
+/* hover / chosen: the letter turns to its stroke essence, in place */
+.lp-built .lp-room:hover .lp-fill,
+.lp-built .lp-stage.lp-reveal .lp-room .lp-fill { opacity: 0; }
+.lp-built .lp-room:hover .lp-layer,
+.lp-built .lp-stage.lp-reveal .lp-room .lp-layer { opacity: 0; }
+.lp-built .lp-room:hover .lp-stroke,
+.lp-built .lp-stage.lp-reveal .lp-room .lp-stroke { opacity: 1; }
+
+/* ---- tagin: they live in a 3D room that mirrors the letter's exactly and
+   is turned by the same yaw, so they rotate/tilt with the letter as one
+   object. The room is pass-through; only the crowns' hit-zone is hot, so
+   hovering a crown never triggers the letter's own hover. ---- */
+.lp-tagroom {
+  position: absolute;
+  perspective: 1700px; /* must match .lp-room, so the shared plane projects alike */
+  pointer-events: none;
+}
+.lp-tagholder {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+/* the tagin asset: two registered renderings sharing the letter's own
+   window — stroke at rest, fill when lit — drawn from the designer's
+   tagin files, so each letter carries its own true crowns */
+.lp-tagset {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 500ms ease 2.05s;
+}
+/* the crowns ride a touch higher, sitting exactly ON the stroke —
+   never sinking into the letter body (the ש master's nudge) */
+.lp .lp-tagset { transform: translateY(-1.5%); }
+
+/* the tagin light with the same pale purple-white misty fill language as
+   the letter's own aura — never a flat generic fill */
+.lp .lp-tag-lit {
+  color: #f4f4f7;
+  filter: drop-shadow(0 0 calc(var(--k, 0.5) * 10px) rgba(255, 255, 255, 0.8))
+          drop-shadow(0 0 calc(var(--k, 0.5) * 26px) rgba(230, 230, 236, 0.45));
+}
+.lp-marks-in .lp-tagset { opacity: 1; }
+.lp-tagsvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--fg-light);
+  transition: opacity 280ms ease;
+  pointer-events: none;
+}
+.lp-tag-rest { opacity: 1; }
+.lp-tag-lit { opacity: 0; }
+.lp-tagset.is-lit .lp-tag-rest { opacity: 0; }
+.lp-tagset.is-lit .lp-tag-lit { opacity: 1; }
+.lp-tag-hit {
+  position: absolute;
+  pointer-events: auto;
+  cursor: none;
+}
+
+/* ---- nikud: orbit the hidden ellipse (left/top driven per frame); depth
+   read through scale; stroke at rest, fill when the mark is the focus.
+   Each mark carries its own natural size (set inline) under one shared
+   scale, so a dot stays a dot beside the wide bars. ---- */
+.lp-nikud {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(var(--nk-s, 1));
+  opacity: 0;
+  transition: opacity 480ms ease;
+  cursor: none;
+  will-change: transform; /* the orbit moves marks by composited transform only */
+}
+/* a quiet, generous hit-area — the small marks (a single dot) stay easy
+   to reach without growing visually */
+.lp-nikud::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--k, 0.5) * -26px);
+}
+.lp-marks-in .lp-nikud { opacity: 1; }
+.lp-nikud svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--fg-light);
+  transition: opacity 260ms ease;
+}
+.lp-nk-fill { opacity: 0; }
+.lp-nk-stroke { opacity: 1; }
+.lp-nikud.is-lit .lp-nk-fill { opacity: 1; }
+.lp-nikud.is-lit .lp-nk-stroke { opacity: 0; }
+.lp-nikud.is-lit { filter: drop-shadow(0 0 4px rgba(253, 252, 248, 0.55)); }
+
+/* ---- the hairline rules (panels + foundations), per the reference ---- */
+.lp-rule {
+  position: absolute;
+  height: 1px;
+  background: rgba(253, 252, 248, 0.55);
+}
+
+/* ---- foundations ---- */
+.lp-frule {
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 520ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.lp-stage.lp-reveal .lp-frule { transform: scaleX(1); }
+.lp-flabel {
+  position: absolute;
+  color: var(--fg-light);
+  font-weight: 400;
+  font-size: calc(var(--k, 0.5) * 24px);
+  letter-spacing: 0.02em;
+  opacity: 0;
+  transition: opacity 420ms ease 260ms;
+}
+.lp-stage.lp-reveal .lp-flabel { opacity: 1; }
+.lp-f { position: absolute; }
+.lp-f-dot {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--fg-light);
+  box-shadow: 0 0 6px rgba(253, 252, 248, 0.8);
+  opacity: 0;
+}
+.lp-stage.lp-reveal .lp-f-dot { animation: lp-dot 760ms ease both; animation-delay: var(--d, 0ms); }
+@keyframes lp-dot {
+  0% { opacity: 0; transform: scale(0.4); }
+  30% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+.lp-f-svg {
+  display: block;
+  height: 100%;
+  width: auto;
+  color: var(--fg-light);
+  transform: scale(0.06);
+  transform-origin: 50% 100%;
+  opacity: 0;
+  transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1), opacity 360ms ease;
+  transition-delay: calc(var(--d, 0ms) + 220ms);
+}
+.lp-stage.lp-reveal .lp-f-svg { transform: scale(1); opacity: 1; }
+
+/* ---- reading panels (tagin / nikud): a rule, a label, a paragraph — no
+   pointer lines, so text can never overlap a connector ---- */
+.lp-panel { opacity: 0; pointer-events: none; transition: opacity 320ms ease; }
+.lp-panel.is-open { opacity: 1; }
+.lp-panel-wrap {
+  position: absolute;
+  color: #f3f0e9;
+  text-align: right;
+  padding-top: calc(var(--k, 0.5) * 8px);
+}
+.lp-panel-label {
+  font-weight: 600;
+  font-size: calc(var(--k, 0.5) * 27px);
+  margin-bottom: 0.55em;
+  min-height: 1em;
+  color: var(--fg-light);
+}
+.lp-panel-text {
+  font-weight: 300;
+  font-size: calc(var(--k, 0.5) * 27px);
+  line-height: 1.35;
+  /* never strand a single word on the last line (widows/orphans) */
+  text-wrap: pretty;
+}
+/* the nikud panel carries the longest sheet texts — one step smaller so
+   even the twin שווא text sits inside the frame with margin */
+.lp-panel--nikud .lp-panel-text {
+  font-size: calc(var(--k, 0.5) * 25px);
+}
+
+/* ==========================================================================
+   the atmosphere (the ש master's art direction, applied to every screen)
+   A restrained, misty, softly-grained "old-photograph" treatment around the
+   unchanged mechanism: the letter as pure stroke wrapped in a SHAPED aura
+   (its own blurred silhouette — never a radial disc), two drifting mist
+   banks, scattered graphic marks (crosses, hollow circles, sparks, sharp &
+   blurred dots), one static grain layer masked to fade into the clean black,
+   and a whisper of chromatic aberration on the type. Everything here is
+   decorative and pointer-transparent; drag / hover / orbit are exactly as
+   before.
+   ========================================================================== */
+
+/* ---- every letter lives as pure stroke ----
+   No fill, no extrusion, no fill reveals: the outline is the letter, in
+   every state (construction, rest, hover). Presence comes from the aura. */
+.lp .lp-fill,
+.lp .lp-layer { display: none; }
+/* declared above the built/hover states' specificity — the outline stays
+   solid and steady */
+.lp .lp-letter .lp-stroke { opacity: 1; transition: none; }
+
+/* the shaped aura: the letter's own silhouette, blurred into a restrained
+   misty bloom that hugs the form — two breaths, one tight, one wide. It
+   lives in a static wrap OUTSIDE the turning 3D holder, so the blur is
+   rasterized once and cached; dragging the letter costs nothing here. */
+.lp-aura-wrap { position: absolute; pointer-events: none; }
+.lp-aura-wrap svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* the aura is built from the letter's OUTLINE rim (see buildDom), so the
+   blur wraps the contour from both sides and the inside stays hollow.
+   The typography reference's language, in NEUTRAL white: a hot tight
+   halation hugging the stroke, then one short soft breath — the letter's
+   rim radiates; no purple, no wide haze. */
+.lp-aura--tight {
+  color: rgba(244, 244, 248, 0.9);
+  filter: blur(calc(var(--k, 0.5) * 11px));
+}
+.lp-aura--wide {
+  color: rgba(216, 218, 226, 0.5);
+  filter: blur(calc(var(--k, 0.5) * 34px));
+}
+.lp .lp-aura { opacity: 0; transition: opacity 1200ms ease; }
+.lp.lp-built .lp-aura { opacity: 1; transition-delay: 200ms; }
+
+/* (no particle field on the letter screens — the atmosphere below is the
+   design's own: mist, aura, grain, glow) */
+
+/* ---- background atmosphere (behind the whole composition) ----
+   Removed: the letter screens are clean black now — no fog banks, no
+   haze. The whole atmosphere layer is hidden (kept, dormant, for reuse). */
+.lp-atmos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+}
+
+/* slow-drifting fog banks — the dreamy, breathing softness, kept sparse
+   and cheap: plain alpha gradients (no blend modes, no live blur — the
+   gradient IS the softness), moved only by composited transforms */
+.lp-mist {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.42;
+  will-change: transform;
+}
+.lp-mist {
+  opacity: 0.38; /* broader now, so a touch lower — same soft haze, never heavy */
+}
+.lp-mist--a {
+  left: 22%; top: 16%; width: 52%; height: 70%;
+  background: radial-gradient(closest-side, rgba(168, 168, 176, 0.32), transparent 72%);
+  animation: lp-drift-a 27s ease-in-out infinite;
+}
+.lp-mist--b {
+  left: 42%; top: 32%; width: 46%; height: 60%;
+  background: radial-gradient(closest-side, rgba(150, 150, 160, 0.26), transparent 72%);
+  animation: lp-drift-b 33s ease-in-out infinite;
+}
+@keyframes lp-drift-a { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(4%, -3%); } }
+@keyframes lp-drift-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-4%, 3%); } }
+
+/* ---- scattered graphic marks ---- */
+.lp-marks { position: absolute; inset: 0; }
+.lp-mk {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: rgba(234, 234, 240, 0.5);
+  font-style: normal;
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.32);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.lp-mk--cross  { font-size: calc(var(--k, 0.5) * 34px); font-weight: 300; }
+.lp-mk--circle { font-size: calc(var(--k, 0.5) * 26px); }
+.lp-mk--spark  { font-size: calc(var(--k, 0.5) * 22px); color: rgba(242, 242, 246, 0.6); }
+.lp-mk--dot    { font-size: calc(var(--k, 0.5) * 17px); }
+.lp-mk--blur   { filter: blur(2.6px); opacity: 0.7; }
+/* the marks fade in with the rest of the marks layer */
+.lp-mk { opacity: 0; transition: opacity 900ms ease; }
+.lp-marks-in .lp-mk { opacity: 1; }
+.lp-marks-in .lp-mk--blur { opacity: 0.7; }
+.lp-marks-in .lp-mk--spark { opacity: 0.85; }
+
+/* the marks sit on the text composition's own grid (per the reference):
+   crosses flank the reading band on its midline (y900); sharp dots mark
+   the inner column gaps on the same midline; sparks + blurred dots ride
+   the band's top edge (y820) at the blocks' outer edges; hollow circles
+   flank the nikud reading row (y1580). All in design-frame %. */
+.m1  { left: 88.2%; top: 50%; }    /* + right of block 1        */
+.m2  { left: 9.9%;  top: 50%; }    /* + left of block 4          */
+.m3  { left: 70.7%; top: 87.8%; }  /* ○ right of the nikud text  */
+.m4  { left: 29.2%; top: 87.8%; }  /* ○ left of the nikud text   */
+.m5  { left: 72.5%; top: 45.6%; }  /* ✦ above block 2's right edge */
+.m6  { left: 27.5%; top: 45.6%; }  /* ✦ above block 3's left edge  */
+.m7  { left: 74.2%; top: 50%; }    /* • the gap between blocks 1-2 */
+.m8  { left: 25.8%; top: 50%; }    /* • the gap between blocks 3-4 */
+.m9  { left: 11.6%; top: 45.6%; }  /* blurred • above block 4's left edge */
+.m10 { left: 86.5%; top: 45.6%; }  /* blurred • above block 1's right edge */
+
+/* ---- a whisper of chromatic aberration on the type (filter, so it also
+   colours the typed spans; kept almost subliminal) ---- */
+.lp .lp-title {
+  filter:
+    drop-shadow(0.6px 0 rgba(255, 62, 96, 0.13))
+    drop-shadow(-0.6px 0 rgba(70, 190, 255, 0.13));
+}
+.lp .lp-body,
+.lp .lp-panel-text,
+.lp .lp-panel-label {
+  filter:
+    drop-shadow(0.5px 0 rgba(255, 62, 96, 0.10))
+    drop-shadow(-0.5px 0 rgba(70, 190, 255, 0.10));
+}
+
+/* ---- the grain: one static filmic layer, living on the letter/glow zone
+   (the whites, the lavender, the near-black around them) and dissolving in
+   a long smooth gradient into the interface's own clean black ---- */
+.lp .lp-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0.15; /* half strength — present, never aggressive */
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  /* the grain lives only on the letter's white/purple zone, dissolving well
+     before the frame — the black stays clean */
+  -webkit-mask-image: radial-gradient(56% 78% at 50% 45%,
+    #000 0%, #000 30%, rgba(0, 0, 0, 0.45) 54%, transparent 78%);
+  mask-image: radial-gradient(56% 78% at 50% 45%,
+    #000 0%, #000 30%, rgba(0, 0, 0, 0.45) 54%, transparent 78%);
+}
+
+/* ---- the 4-part reading, flanking the letter (עיצוב 222) ----
+   Four right-aligned blocks on the letter's midline, read right-to-left.
+   Balanced wrapping keeps the ~3-line blocks free of widows/orphans.
+   The reading replaces the old title+body on every screen. */
+.lp .lp-title,
+.lp .lp-body { display: none; }
+
+.lp-quad { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+.lp-quad-block {
+  position: absolute;
+  color: #f3f0e9;
+  font-weight: 300;
+  font-size: calc(var(--k, 0.5) * 22px);
+  line-height: 1.28;
+  text-align: right;
+  text-wrap: balance;
+  white-space: pre-line; /* honors the authored 3-line breaks of the tagin reading */
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(calc(var(--k, 0.5) * 12px));
+  transition:
+    opacity 820ms ease,
+    filter 820ms ease,
+    transform 820ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* breathe in, right to left, once the letter has built */
+.lp-quad-in .lp-quad-block { opacity: 1; filter: blur(0); transform: translateY(0); }
+.lp-quad-in .lp-quad-block:nth-child(1) { transition-delay: 0ms; }
+.lp-quad-in .lp-quad-block:nth-child(2) { transition-delay: 140ms; }
+.lp-quad-in .lp-quad-block:nth-child(3) { transition-delay: 280ms; }
+.lp-quad-in .lp-quad-block:nth-child(4) { transition-delay: 420ms; }
+
+/* ==========================================================================
+   ש only: the depth field — a scroll-down spatial section.
+   The 4 reading blocks keep their exact composition but live on different
+   depth layers; scrolling down (--dp: 0 -> 1) dollies the viewer through
+   the text toward the letter, which is the farthest object of the scene.
+   Depth separation is deliberately subtle: no tilt, no angled planes —
+   the text stays upright and readable, only nearness changes.
+   ========================================================================== */
+.lp[data-letter="ש"] .lp-stage {
+  perspective: 1200px;
+  perspective-origin: 50% 46%;
+}
+.lp[data-letter="ש"] .lp-quad { transform-style: preserve-3d; }
+/* each block on its own layer, in strict reading order: the RIGHTMOST
+   block (part 1) is the closest, and each next part stands behind the
+   previous — the viewer passes them 1 -> 4 on the way to the letter */
+.lp[data-letter="ש"] .lp-quad-block:nth-child(1) { --bz: 660px; --bf: 1; }
+.lp[data-letter="ש"] .lp-quad-block:nth-child(2) { --bz: 480px; --bf: 0.82; }
+.lp[data-letter="ש"] .lp-quad-block:nth-child(3) { --bz: 310px; --bf: 0.6; }
+.lp[data-letter="ש"] .lp-quad-block:nth-child(4) { --bz: 160px; --bf: 0.34; }
+.lp[data-letter="ש"].lp-quad-in .lp-quad-block {
+  transform: translateY(0) translateZ(calc(var(--dp, 0) * var(--bz, 0px)));
+  opacity: calc(1 - var(--dp, 0) * var(--bf, 0));
+}
+/* once the dolly is engaged the motion is driven frame-by-frame — the JS
+   easing IS the motion; a CSS transition would only drag behind it. (The
+   class arrives on first scroll, so the entry breath stays untouched.) */
+.lp[data-letter="ש"].lp-depth-live.lp-quad-in .lp-quad-block {
+  transition: filter 820ms ease;
+}
+/* the letter (and its crowns) is the deepest object: it barely moves, so
+   everything else streams past it and the viewer arrives at the ש */
+.lp[data-letter="ש"] .lp-room,
+.lp[data-letter="ש"] .lp-tagroom {
+  transform: translateZ(calc(var(--dp, 0) * 56px));
+}
+
+/* ---- the deep phase (--dc: 0 -> 1, past the text layers) ----
+   whatever text is still lingering settles away, leaving the viewer alone
+   with the letter as it unfolds into its foundations */
+.lp[data-letter="ש"] .lp-quad { opacity: calc(1 - var(--dc, 0)); }
+
+/* the decomposition: the ש's three foundation letters (י ו ז), drawn in
+   the exact same voice as the letter itself — thin clean stroke, no glow.
+   They live in their own layer over the letter room; geometry and motion
+   are driven frame-by-frame from the loop (reversible by construction). */
+.lp-decomp {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+  transform-style: preserve-3d;
+}
+.lp-fnd {
+  position: absolute;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.lp-fnd svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.lp .lp-fnd .lp-stroke { opacity: 1; transition: none; }
+
+/* ---- every letter stands clean: no glow, no aura on the stroke, no
+   grain texture over the letter zone — the letterform itself carries the
+   presence. (The tagin/nikud hover lights are interactions, not letter
+   styling, and stay.) ---- */
+.lp .lp-aura-wrap { display: none; }
+.lp .lp-grain { display: none; }
+
+/* ==========================================================================
+   ת experiment (DISABLED — reverted to the standard template): the
+   circular reading carousel. TAV_RING_ENABLED is false in letterpage.js,
+   so the 4 parts sit back in the shared static slots like every other
+   letter; these presentation rules are kept, inert, for later reuse.
+   ========================================================================== */
+.lp[data-letter="ת"].lp-ring-live .lp-quad:not(.is-swapping) .lp-quad-block {
+  transition: filter 820ms ease;
+  transition-delay: 0ms;
+}
+
+/* ==========================================================================
+   ש only: the point-trace construction intro (prototype) — an opening
+   stage over the regular screen. Ordered numbered points along the
+   letter's own construction shapes; the user connects them by hand, and
+   on the last point the stage breathes away over the real rim stroke that
+   stands, aligned, beneath it.
+   ========================================================================== */
+.lp-trace {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg-dark, #101010);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 700ms ease, visibility 0s linear 700ms;
+}
+.lp-trace.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 400ms ease;
+}
+/* the resolve: the whole stage dissolves; beneath it the letter's own rim
+   is already standing in the exact same geometry */
+.lp-trace.is-active.lp-trace-resolving {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1000ms ease 260ms;
+}
+.lp-trace-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, calc(100vh * (2880 / 1800)));
+  height: min(100vh, calc(100vw * (1800 / 2880)));
+  direction: rtl;
+}
+.lp-trace-room { position: absolute; }
+.lp-trace-room svg { position: absolute; overflow: visible; }
+
+/* the drawn line — the same voice as the letter's rim stroke */
+.lp-trace-done {
+  fill: none;
+  stroke: var(--fg-light);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+/* the live stroke — the contour growing under the hand, in one voice
+   with the committed line, so locking a segment is imperceptible */
+.lp-trace-live {
+  fill: none;
+  stroke: var(--fg-light);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.9;
+}
+/* the faint thread from the stroke's tip to the cursor */
+.lp-trace-thread {
+  stroke: var(--fg-light);
+  stroke-width: 1;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.22;
+}
+
+/* the numbered points — quiet, precise marks */
+.lp-trace-halo {
+  fill: none;
+  stroke: var(--fg-light);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.lp-trace-dot {
+  fill: var(--fg-light);
+  opacity: 0.4;
+  transition: opacity 300ms ease;
+}
+.lp-trace-num {
+  fill: var(--fg-light);
+  opacity: 0.4;
+  font-family: "Editor Sans", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  transition: opacity 300ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* the next point in the order carries a gentle emphasis — a thin halo and
+   a slow breath, guidance without a game face */
+.lp-trace-pt.is-next .lp-trace-dot { opacity: 1; }
+.lp-trace-pt.is-next .lp-trace-num { opacity: 0.95; }
+.lp-trace-pt.is-next .lp-trace-halo {
+  opacity: 0.55;
+  animation: lp-trace-breathe 2200ms ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes lp-trace-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.25); opacity: 0.3; }
+}
+/* points already joined settle back; their numbers recede */
+.lp-trace-pt.is-reached .lp-trace-dot { opacity: 0.85; }
+.lp-trace-pt.is-reached .lp-trace-num { opacity: 0.14; }
+
+/* the resolve breathes the marks out first, the drawn line last */
+.lp-trace-resolving .lp-trace-num,
+.lp-trace-resolving .lp-trace-halo,
+.lp-trace-resolving .lp-trace-dot { opacity: 0; transition: opacity 260ms ease; }
+
+/* the quiet way out — a plain [דלג], arriving only after a beat
+   (placeholder styling; to be designed later) */
+.lp-trace-skip {
+  position: absolute;
+  bottom: calc(var(--k, 0.5) * 44px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: none;
+  border: 0;
+  padding: calc(var(--k, 0.5) * 10px) calc(var(--k, 0.5) * 18px);
+  color: var(--fg-light);
+  font-family: "Editor Sans", sans-serif;
+  font-size: calc(var(--k, 0.5) * 24px);
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 500ms ease;
+}
+.lp-trace-skip.is-visible { opacity: 0.45; pointer-events: auto; }
+.lp-trace-skip.is-visible:hover { opacity: 0.9; }
+.lp-trace-resolving .lp-trace-skip { opacity: 0 !important; pointer-events: none; transition: opacity 260ms ease; }
+
+/* ==========================================================================
+   ש only: the scroll-driven construction intro — a pinned opening section,
+   in front of the regular screen. A preloaded image sequence is scrubbed on
+   a canvas by the scroll position; near the end it dissolves into the real
+   ש screen beneath. Sits above every stage layer; the back button stays on
+   top so the user can always leave.
+   ========================================================================== */
+.lp-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg-dark, #0b0b0d);
+  overflow: hidden;
+  opacity: 1;
+  /* opacity is driven per-frame in JS; a light transition only softens the
+     final settle, never fights the scrub */
+  transition: opacity 120ms linear;
+}
+.lp-intro--gone { pointer-events: none; opacity: 0 !important; }
+.lp-intro-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* the back button rides above the intro/trace so exit is always available */
+.lp .lp-back { z-index: 80; }
+
+/* the intro's own small scroll cue — the same quiet language as the rest */
+.lp-intro-hint {
+  position: absolute;
+  bottom: calc(var(--k, 0.5) * 44px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k, 0.5) * 8px);
+  color: var(--fg-light);
+  opacity: 0.42;
+  pointer-events: none;
+  transition: opacity 600ms ease;
+}
+.lp-intro-hint-line {
+  width: 1px;
+  height: calc(var(--k, 0.5) * 34px);
+  background: currentColor;
+  opacity: 0.7;
+}
+.lp-intro-hint-tip {
+  font-size: calc(var(--k, 0.5) * 22px);
+  line-height: 1;
+  animation: lp-cue-bob 2400ms ease-in-out infinite;
+}
+
+/* ---- the scroll cue: a small, quiet invitation at the bottom ---- */
+.lp-scrollcue {
+  position: absolute;
+  bottom: calc(var(--k, 0.5) * 44px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--k, 0.5) * 8px);
+  background: none;
+  border: 0;
+  padding: calc(var(--k, 0.5) * 12px);
+  color: var(--fg-light);
+  opacity: 0.38;
+  cursor: pointer;
+  z-index: 8;
+  transition: opacity 600ms ease;
+}
+.lp-scrollcue:hover { opacity: 0.85; }
+.lp-scrollcue.is-away { opacity: 0; pointer-events: none; }
+.lp-scrollcue-line {
+  display: block;
+  width: 1px;
+  height: calc(var(--k, 0.5) * 34px);
+  background: currentColor;
+  opacity: 0.7;
+}
+.lp-scrollcue-tip {
+  font-size: calc(var(--k, 0.5) * 22px);
+  line-height: 1;
+  animation: lp-cue-bob 2400ms ease-in-out infinite;
+}
+@keyframes lp-cue-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(var(--k, 0.5) * 6px)); }
+}
+
+/* the tagin swap: the four blocks breathe out together, the texts change,
+   and they breathe back in — the atmosphere's own transition */
+.lp-quad.is-swapping .lp-quad-block {
+  opacity: 0;
+  filter: blur(9px);
+  transform: translateY(0);
+  transition: opacity 400ms ease, filter 400ms ease;
+  transition-delay: 0ms;
+}
+
+/* (the foundations section is retired on this screen for now, so the
+   reading no longer needs to recede on hover — it stays legible) */
+
+/* the quad carries the same whisper of chromatic aberration as the type */
+.lp .lp-quad-block {
+  text-shadow:
+    0.5px 0 rgba(255, 62, 96, 0.08),
+    -0.5px 0 rgba(70, 190, 255, 0.08);
+}
+
+/* the nikud reading: the design's bottom-centre block — no rule, centred.
+   Anchored from the BOTTOM (not the top) so the reading grows upward and
+   every nikud text — including the long twin שווא — keeps a clear ~3-line
+   margin above the lower edge, never crowding it. */
+.lp .lp-panel--nikud .lp-rule { display: none; }
+.lp .lp-panel--nikud .lp-panel-wrap {
+  text-align: center;
+  top: auto !important;
+  bottom: calc(var(--k, 0.5) * 104px);
+}
+
+/* ---- the designed composition marks (עיצוב 222) ----
+   The small cross in the letter's heart — thin lavender line-work. (The
+   nikud ride an invisible path; the logo returns once it can match the
+   design's own mark exactly.) */
+.lp-cross {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 760ms ease;
+}
+.lp-marks-in .lp-cross { opacity: 0.55; }
+.lp-cross::before,
+.lp-cross::after {
+  content: "";
+  position: absolute;
+  background: rgba(238, 238, 242, 0.55);
+  box-shadow: 0 0 7px rgba(255, 255, 255, 0.35);
+}
+.lp-cross::before { left: 50%; top: 0; width: 1px; height: 100%; transform: translateX(-50%); }
+.lp-cross::after { top: 50%; left: 0; height: 1px; width: 100%; transform: translateY(-50%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-mist { animation: none; }
+}

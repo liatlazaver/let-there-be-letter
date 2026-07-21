@@ -1,0 +1,606 @@
+/* ==========================================================================
+   ראש מילין — version 12: the space direction
+   A single immersive scene (per the reference): a deep-space particle sky,
+   the Hebrew letters living on a slowly turning sphere at its heart,
+   and a light "learn" page per letter.
+   Strictly the project's palette and type system.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Editor Sans";
+  src: url("assets/fonts/EditorSans-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Editor Sans";
+  src: url("assets/fonts/EditorSans-LightItalic.otf") format("opentype");
+  font-weight: 300;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Editor Sans";
+  src: url("assets/fonts/EditorSans-Normal.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Editor Sans";
+  src: url("assets/fonts/EditorSans-NormalItalic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Lyon Display";
+  src: url("assets/fonts/LyonDisplayItalicHLAR-BoldItalic-TRIAL.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+}
+
+:root {
+  --bg-dark: #101010;
+  --fg-light: #fdfcf8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { width: 100%; height: 100%; }
+
+body {
+  background: var(--bg-dark);
+  color: var(--fg-light);
+  font-family: "Editor Sans", sans-serif;
+  overflow: hidden;
+  cursor: none; /* the interface carries its own point-and-ring cursor */
+}
+
+button { cursor: none; }
+
+/* ---- the sky ----
+   no particle field: the opening's atmosphere is carried by the design
+   itself (the violet haze, the grain, the letters' own glow) */
+.sky { display: none; }
+
+/* ---- the atmosphere behind the diagram ----
+   NO purple anywhere anymore. The page is near-pure black with the
+   faintest neutral breath of light at the centre (where the lines
+   converge) and a quiet vignette — the paper the diagram is printed on.
+   All the light now belongs to the letters themselves. */
+.sky-soften {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* atmosphere removed — a clean flat black page, no centre haze, no
+     vignette gradient. (Former recipe preserved below for future reuse.)
+  background:
+    radial-gradient(ellipse 34% 28% at 50% 50%,
+      rgba(255, 255, 255, 0.045) 0%,
+      rgba(255, 255, 255, 0.018) 52%,
+      rgba(255, 255, 255, 0) 78%),
+    radial-gradient(ellipse 120% 105% at 50% 50%,
+      rgba(0, 0, 0, 0) 55%,
+      rgba(0, 0, 0, 0.35) 82%,
+      rgba(0, 0, 0, 0.55) 100%);
+  */
+  background: none;
+  transition: opacity 480ms ease;
+}
+body.learn-open .sky-soften,
+body.lp-open .sky-soften { opacity: 0; }
+
+/* ---- the world ---- */
+.world {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  transition: opacity 480ms ease, transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---- the frame ----
+   One thin white rectangle holding the whole opening composition — the
+   printed page's border. It arrives with the top bar and fades with the
+   world, so the letter pages never carry it. */
+.frame {
+  position: absolute;
+  inset: 26px;
+  border: 1px solid rgba(253, 252, 248, 0.5);
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  transition: opacity 1100ms ease;
+}
+body.world-ready .frame { opacity: 1; }
+
+/* the grain — the reference poster's printed film: one fine static layer
+   across the whole framed page (the black carries a whisper of it, the lit
+   letters catch more through the screen blend). Intentional and even —
+   a print texture, never dirt, never animated. It fades with the world,
+   so the letter pages keep their own. */
+/* grain removed — the framed page is clean now. (Rule kept, disabled, for
+   future reuse: restore `content: ""` and the background to bring it back.) */
+.world::after {
+  content: none;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0.085;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.55 0.55 0.55 0 -0.28'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 280px 280px;
+}
+
+body.learn-open .world {
+  opacity: 0;
+  transform: scale(1.045);
+  pointer-events: none;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  /* the diagram is flat — no perspective, no vanishing point */
+}
+
+.sphere-tilt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+
+/* the diagram's anchor: a tiny centred box at the exact middle of the
+   framed screen — nodes and lines hang off its centre in screen pixels.
+   (It keeps a REAL size: the glyph loader waits for layout before it
+   builds, and a zero box would keep it waiting forever.) */
+.sphere {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 2px;
+  margin: -1px 0 0 -1px;
+}
+
+/* the radiating lines — one thin white rule from the central convergence
+   point out to every letter, trimmed short of the glyph (the reference's
+   structure). A 1px base, aimed by rotate() and lengthened by scaleX() so
+   stepDiagram can move them every frame with no layout. They print in
+   during the ceremony. */
+.radial-line {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  transform-origin: left center;
+  background: rgba(253, 252, 248, 0.34);
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* the nikud are part of the cluster but NOT interactive — purely visual,
+   never clickable, never a hover target (letters alone stay clickable) */
+.sphere-node:not(.sphere-node--letter) { pointer-events: none; }
+
+.sphere-node {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate3d(var(--x), var(--y), var(--z));
+  transform-style: preserve-3d;
+}
+
+.sphere-node--letter { cursor: none; }
+.sphere-node--letter .glyph-face { color: #ffffff; }
+
+.sphere-node-inner { transform-style: preserve-3d; }
+
+.glyph-face {
+  position: relative;
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  color: var(--fg-light);
+  /* each face carries a FIXED tangent orientation set inline once (see
+     orientNode in v12.js) — it rides the drum's single transform */
+}
+
+.glyph-face svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  /* depth/assembly dimming lives on the LEAVES: opacity on the face (a
+     preserve-3d group) would flatten the extrude to a sliver */
+  opacity: var(--dim, 1);
+  transition: opacity 220ms ease;
+}
+
+.glyph-face svg.glyph-stroke { opacity: 0; }
+
+/* ==========================================================================
+   PRESERVED, REUSABLE EFFECT — "edge-light" (rim halo)
+   --------------------------------------------------------------------------
+   The typography reference's treatment (NOT a generic glow): a solid body
+   of pale cool white whose light lives AT ITS EDGE — a hot, tight halation
+   hugging the contour (like an outer stroke of light) then a fast, short
+   falloff, so the form reads crisp and printed while its rim radiates. The
+   page grain screens over the halo for a frosted, printed-light finish.
+   Neutral white only. Pure filter space — never touches geometry.
+
+   This is KEPT for later reuse (the logo, other UI, screen details): apply
+   `fx-edge-light` to any element (and `fx-edge-light--strong` for the lifted
+   state). It is intentionally NOT applied to the opening-carousel letters
+   anymore — those are now clean. Two CSS variables let it ride any element:
+   the base filter, and the stronger variant. */
+:root {
+  --fx-edge-light:
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.6))
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.3))
+    drop-shadow(0 0 12px rgba(255, 255, 255, 0.14));
+  --fx-edge-light-strong:
+    drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.85))
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.4))
+    drop-shadow(0 0 9px rgba(255, 255, 255, 0.18));
+}
+.fx-edge-light { color: #eef0f4; filter: var(--fx-edge-light); }
+.fx-edge-light--strong { filter: var(--fx-edge-light-strong); }
+
+/* the opening-carousel letters — CLEAN now: solid white ink, no glow, no
+   texture, no filter. Same letters, size, positions, motion. */
+.sphere-node--letter .glyph-fill {
+  color: #f2f0f8;
+}
+
+/* hover: the glyph turns to its stroke essence, in exactly the same place —
+   a pure crossfade, registered by construction so nothing moves or rescales.
+   Behavior unchanged; no glow on either state. */
+.sphere-node:hover .glyph-fill { opacity: 0; }
+.sphere-node:hover .glyph-face svg.glyph-stroke {
+  opacity: var(--dim, 1);
+}
+
+.sphere .glyph-stroke path,
+.sphere .glyph-stroke polygon,
+.sphere .glyph-stroke polyline,
+.sphere .glyph-stroke line { stroke-width: 1; }
+
+/* ---- interaction feedback: a restrained spatial "activation" language ----
+   An orbital satellite that engages on hover, and a scan ripple that pulses
+   on selection. Everything here is an overlay separate from the ink, so the
+   fill/stroke registration is untouched: no jump, no shift, ever. The same
+   language serves letters and nikud (nikud simply smaller). */
+
+/* the orbital satellite — a single faint point locks into a slow orbit
+   around the glyph while it is targeted: a signal that it has been detected */
+.glyph-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transition: opacity 280ms ease;
+  pointer-events: none;
+}
+.glyph-orbit-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 2px;
+  margin: -1px 0 0 -1px;
+  border-radius: 50%;
+  background: var(--fg-light);
+  box-shadow: 0 0 4px rgba(253, 252, 248, 0.7);
+  transform: translateX(var(--orbit-r, 40px));
+}
+.sphere-node:hover .glyph-orbit {
+  opacity: 0.85;
+  animation: orbit-spin 2.8s linear infinite;
+}
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* the activation ping — a thin ring the script scales outward and fades on
+   selection: a scan pulse that dissipates, never a lingering frame */
+.glyph-ping {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(253, 252, 248, 0.6);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* the printed frame is retired — the composition breathes to the edges
+   now (markup kept, hidden, so it can return by dropping this line) */
+.frame { display: none !important; }
+
+/* ---- the top bar ----
+   The opening screen wears the interface's OWN system-2 bar — the exact
+   .lp2-top / .lp2-pill from the letter screens (259x47 r23.5 pills at the
+   design's x38.5 / x331.5). We only add what the letter screens get from
+   their .lp2 container: the design unit, the palette, and — since the
+   opening poster is black — a cream ground for the strip. */
+.os-topbar {
+  --u: calc(100vw / 2850);
+  --hair: calc(100vw / 2850);
+  --ink: #101010;
+  --paper: #FDFCF8;
+  background: var(--paper);
+  z-index: 9;
+  opacity: 0;
+  transition: opacity 750ms ease;
+}
+body.brand-in .os-topbar { opacity: 1; }
+
+/* the logo is hidden for now (kept in the markup so it can return) */
+.brand { display: none !important; }
+
+/* "בחרו אות" is removed for now (kept in the markup, hidden) */
+.hint { display: none !important; }
+
+/* ---- the symbolic marks (opening screen) ----
+   The same small UI family as the ש screen (star ✦, cross +, hollow circle
+   ○, dot •), in the same lavender-with-a-soft-glow language. They are
+   ALIGNED TO THE TEXT, per the ש reference's logic: a spark on the row's top
+   edge, a cross flanking its outer edge, a dot below — mirrored on the top
+   nav (left) and the brand (right); and hollow circles + dots flanking the
+   hint on its own midline. Intentional and symmetric, never floating.
+   Every mark is centred on its point via translate(-50%, -50%). */
+.world-marks { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+.wm {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: rgba(235, 235, 240, 0.5);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  font-style: normal;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 900ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.wm--cross  { font-size: 15px; font-weight: 300; }
+.wm--circle { font-size: 11px; }
+.wm--spark  { font-size: 10px; color: rgba(232, 226, 250, 0.6); }
+.wm--dot    { font-size: 6px; }
+.wm--blur   { filter: blur(2.4px); }
+
+/* they arrive with the top bar and hint, once the structure stands */
+body.world-ready .world-marks .wm { opacity: 1; }
+body.world-ready .world-marks .wm--spark { opacity: 0.85; }
+body.world-ready .world-marks .wm--blur { opacity: 0.7; }
+
+/* the hint — two circles flanking it, symmetric on its midline: the only
+   marks in the composition, punctuation aligned to the text */
+.wm-h-circle-l { left: calc(50% - 100px); top: calc(100% - 40px); }
+.wm-h-circle-r { left: calc(50% + 100px); top: calc(100% - 40px); }
+
+/* ==========================================================================
+   the learn space — a letter's own page, light like the reference's pages
+   ========================================================================== */
+.learn {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--fg-light);
+  color: var(--bg-dark);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(2.5%);
+  transition: opacity 460ms ease, transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 460ms;
+}
+
+body.learn-open .learn {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 460ms ease 120ms, transform 620ms cubic-bezier(0.22, 1, 0.36, 1) 120ms;
+}
+
+.dust {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.learn-back {
+  position: absolute;
+  top: 34px;
+  right: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  color: var(--bg-dark);
+  font-family: "Editor Sans", sans-serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  opacity: 0.6;
+  transition: opacity 200ms ease;
+}
+
+.learn-back:hover { opacity: 1; }
+.learn-back .back-arrow { font-style: normal; }
+
+.learn-head {
+  position: absolute;
+  top: 7.5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.learn-title {
+  font-family: "Lyon Display", serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: clamp(30px, 4.6vh, 46px);
+  letter-spacing: 0.02em;
+}
+
+.learn-tabs {
+  margin-top: 3.2vh;
+  display: flex;
+  gap: 38px;
+  justify-content: center;
+}
+
+.learn-tab {
+  position: relative;
+  background: none;
+  border: 0;
+  color: var(--bg-dark);
+  font-family: "Editor Sans", sans-serif;
+  font-weight: 300;
+  font-size: 12.5px;
+  letter-spacing: 0.26em;
+  padding: 8px 2px;
+  opacity: 0.42;
+  transition: opacity 220ms ease, font-weight 0s;
+}
+
+.learn-tab:hover { opacity: 0.8; }
+
+.learn-tab.is-active {
+  opacity: 1;
+  font-weight: 400;
+}
+
+/* the reference's circled active tab: one hairline ellipse around it */
+.learn-tab.is-active::before {
+  content: "";
+  position: absolute;
+  inset: -4px -14px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.85;
+}
+
+/* the letter itself — large, on the right, where Hebrew begins */
+.learn-letter {
+  position: absolute;
+  top: 50%;
+  right: 10vw;
+  width: min(44vh, 34vw);
+  height: min(52vh, 40vw);
+  transform: translateY(-44%);
+  color: var(--bg-dark);
+}
+
+.learn-letter svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* the reading column — on the left */
+.learn-body {
+  position: absolute;
+  top: 50%;
+  left: 10vw;
+  transform: translateY(-46%);
+  width: min(40vw, 520px);
+}
+
+.learn-body h3 {
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  margin-bottom: 2.6vh;
+  opacity: 0.6;
+}
+
+.learn-body p {
+  font-weight: 300;
+  font-size: clamp(15px, 1.9vh, 18px);
+  line-height: 1.95;
+  letter-spacing: 0.01em;
+}
+
+.learn-body .learn-note {
+  margin-top: 3vh;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  opacity: 0.45;
+}
+
+/* ---- the cursor: a point and its following ring ---- */
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.cursor-dot {
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  background: var(--fg-light);
+}
+
+.cursor-ring {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 1px solid var(--fg-light);
+  opacity: 0.65;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease;
+}
+
+body.cursor-hot .cursor-ring { transform: scale(1.55); opacity: 1; }
+
+/* on the light learn page the cursor turns to ink */
+body.learn-open .cursor-dot { background: var(--bg-dark); }
+body.learn-open .cursor-ring { border-color: var(--bg-dark); }
+
+/* entry choreography targets (set by the script) */
+.hint { transition: opacity 900ms ease; }
+body.world-ready .hint { opacity: 0.68; }
+
+/* the entrance label, centred under the letter composition — the interface's
+   own bracketed Lyon-italic caption. Small and quiet: the design carries no
+   Lyon Light cut, so the weight is the real Lyon italic (400) and the "light"
+   reading comes from the small size and the held-back paper tone. It rides the
+   world's own entrance, fading up with the structure — the one subtle motion
+   the opening already speaks. */
+.os-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 44px;
+  transform: translateX(-50%);
+  margin: 0;
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: rgba(253, 252, 248, 0.7);
+  white-space: nowrap;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+body.world-ready .os-hint { opacity: 1; }

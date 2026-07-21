@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ראש מילין</title>
+  <link rel="stylesheet" href="v12.css?v=105" />
+  <link rel="stylesheet" href="letterpage.css?v=101" />
+  <link rel="stylesheet" href="letterpage2.css?v=18" />
+  <link rel="stylesheet" href="nikud.css?v=6" />
+  <link rel="stylesheet" href="about.css?v=17" />
+</head>
+<body>
+  <!-- the atmosphere: the violet haze + vignette behind the drum (no
+       particle field anywhere — the design carries the air itself) -->
+  <div class="sky-soften" aria-hidden="true"></div>
+
+  <!-- the world: the letters living on a slowly turning sphere -->
+  <main class="world" id="world">
+    <div class="scene" id="scene">
+      <div class="sphere-tilt" id="sphereTilt">
+        <div class="sphere" id="sphere"></div>
+      </div>
+    </div>
+
+    <!-- the project logo (hidden for now, kept in the markup) -->
+    <header class="brand" id="brand">
+      <img class="brand-logo" src="assets/logo-reish-milin.png" alt="ראש מילין" />
+    </header>
+
+    <!-- the top bar: the interface's own system-2 bar (the same as the
+         letter screens), reusing .lp2-top / .lp2-pill exactly -->
+    <nav class="lp2-top os-topbar" id="topbar" aria-label="ניווט">
+      <button class="lp2-pill" type="button" id="pillAboutTop">אודות</button>
+      <button class="lp2-pill" type="button" id="pillNikud">ניקוד</button>
+      <button class="lp2-pill lp2-pill--active" type="button" id="pillLetters">אותיות</button>
+    </nav>
+
+    <p class="hint" id="hint">בחרו אות</p>
+
+    <!-- the entrance label, under the letter composition: the interface's own
+         bracketed Lyon-italic caption, small and quiet -->
+    <p class="os-hint" id="osHint">[בחר אות]</p>
+
+    <!-- the frame: one thin white rectangle holding the composition -->
+    <div class="frame" aria-hidden="true"></div>
+  </main>
+
+  <!-- the learn space: each letter opens its own exploration page -->
+  <section class="learn" id="learn" aria-hidden="true">
+    <canvas class="dust" id="dust" aria-hidden="true"></canvas>
+    <button class="learn-back" id="learnBack" type="button"><span class="back-arrow">→</span><span>חזרה</span></button>
+    <div class="learn-head">
+      <h2 class="learn-title" id="learnTitle"></h2>
+      <div class="learn-tabs" id="learnTabs" role="tablist"></div>
+    </div>
+    <figure class="learn-letter" id="learnLetter" aria-hidden="true"></figure>
+    <article class="learn-body" id="learnBody"></article>
+  </section>
+
+  <!-- the cursor: a point, its following ring, and the inversion lens
+       (a difference-blend fill that reveals the negative of what's beneath
+       it — active over the system-2 nav) -->
+  <div class="cursor-dot" id="cursorDot" aria-hidden="true"></div>
+  <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
+  <div class="cursor-lens" id="cursorLens" aria-hidden="true"></div>
+
+  <script type="module" src="v12.js?v=138"></script>
+
+  <!-- development only: manual layout mode (press E). Self-gates to
+       localhost / file:// / ?edit=1 — inert anywhere else. -->
+  <script type="module" src="dev-layout.js?v=3"></script>
+</body>
+</html>

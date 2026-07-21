@@ -1,0 +1,1136 @@
+/* Reish Milin — design tokens (see design.md) */
+:root {
+  --bg-dark: #101010;
+  --fg-light: #fdfcf8;
+
+  /* reference canvas matches Figma frame (1920x1080) — everything is
+     positioned/sized relative to this so proportions stay exact */
+  --stage-w: 1920;
+  --stage-h: 1080;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  background: var(--bg-dark);
+}
+
+body {
+  min-height: 100%;
+}
+
+@font-face {
+  font-family: "Editor Sans";
+  font-style: normal;
+  font-weight: 300;
+  src: url("assets/fonts/EditorSans-Light.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Editor Sans";
+  font-style: italic;
+  font-weight: 300;
+  src: url("assets/fonts/EditorSans-LightItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Editor Sans";
+  font-style: italic;
+  font-weight: 400;
+  src: url("assets/fonts/EditorSans-NormalItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Lyon Display";
+  font-style: italic;
+  font-weight: 700;
+  src: url("assets/fonts/LyonDisplayItalicHLAR-BoldItalic-TRIAL.otf") format("opentype");
+}
+
+.stage {
+  position: relative;
+  width: 100vw;
+  background: var(--bg-dark);
+}
+
+.screen {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- Loading screen ---- */
+/* All positions below are expressed as % of the 1920x1080 reference frame */
+
+.loading-screen {
+  background: var(--bg-dark);
+}
+
+.logo-wrap {
+  position: absolute;
+  left: calc(682 / 1920 * 100%);
+  top: calc(304 / 1080 * 100%);
+  width: calc(555 / 1920 * 100%);
+  height: calc(472 / 1080 * 100%);
+}
+
+.logo-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+#logo-path {
+  fill: none;
+  stroke-width: 1;
+}
+
+.scroll-cue {
+  position: absolute;
+  left: 50%;
+  top: calc(911 / 1080 * 100%);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(22 / 1080 * 100vh);
+  opacity: 0;
+}
+
+.scroll-label {
+  font-family: "Editor Sans", sans-serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: calc(22 / 1080 * 100vh);
+  color: var(--fg-light);
+  white-space: nowrap;
+}
+
+.scroll-arrow {
+  width: calc(46 / 1080 * 100vh);
+  aspect-ratio: 46.5 / 7.36396;
+  display: block;
+  animation: scroll-bob 3.6s ease-in-out infinite;
+}
+
+@keyframes scroll-bob {
+  0%,
+  100% {
+    transform: rotate(90deg) translateY(-10%);
+  }
+  50% {
+    transform: rotate(90deg) translateY(10%);
+  }
+}
+
+/* ---- Screen 2 — sphere teaser ---- */
+
+.sphere-screen {
+  background: var(--bg-dark);
+}
+
+/* Resting slot for screen 1's own logo once it has scrolled fully into
+   screen 2 — the logo element itself relocates here (see script.js), it is
+   never duplicated. */
+.logo-slot {
+  position: absolute;
+  left: calc(783 / 1920 * 100%);
+  top: calc(114 / 1080 * 100%);
+  width: calc(353 / 1920 * 100%);
+  height: calc(301 / 1080 * 100%);
+}
+
+/* Mid-scroll: the real .logo-wrap is reparented to <body> and pinned so its
+   screen position can be interpolated between screen 1 and screen 2. */
+.logo-wrap--fixed {
+  position: fixed;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* Handed off into screen 2's slot: fills it exactly. */
+.logo-wrap--docked {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Scroll progress indicator (right edge, screens 2+) ---- */
+
+.scroll-indicator {
+  position: fixed;
+  right: calc(71 / 1920 * 100vw);
+  top: 50%;
+  transform: translateY(-50%) scale(0.85);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(15 / 1080 * 100vh);
+  opacity: 0;
+  transition: opacity 700ms ease-out, transform 700ms ease-out;
+  pointer-events: none;
+}
+
+.scroll-indicator.is-visible {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.scroll-dot {
+  width: calc(11 / 1080 * 100vh);
+  height: calc(11 / 1080 * 100vh);
+  border-radius: 50%;
+  border: 1px solid var(--fg-light);
+  background: transparent;
+  transition: background 400ms ease, transform 400ms ease;
+}
+
+.scroll-dot.is-active {
+  background: var(--fg-light);
+  transform: scale(1.05);
+}
+
+/* ---- Letters + nikud sphere ---- */
+
+.sphere-window {
+  position: absolute;
+  left: calc(469 / 1920 * 100%);
+  top: calc(512 / 1080 * 100%);
+  width: calc(981 / 1920 * 100%);
+  height: calc(814 / 1080 * 100%);
+  overflow: hidden;
+}
+
+.sphere-shell {
+  position: absolute;
+  left: 50%;
+  top: 6%;
+  width: min(64vmin, 760px);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  perspective: 1400px;
+}
+
+.sphere {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: sphere-spin 46s linear infinite;
+}
+
+@keyframes sphere-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+.sphere-node {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate3d(var(--x), var(--y), var(--z));
+  transform-style: preserve-3d;
+}
+
+/* Only letters are an entry point into their own screen — nikud keep their
+   existing (non-interactive) behavior exactly as before. */
+.sphere-node--letter {
+  cursor: pointer;
+}
+
+.sphere-node--is-selected {
+  opacity: 0;
+}
+
+.sphere-node-inner {
+  animation: sphere-spin-reverse 46s linear infinite;
+}
+
+@keyframes sphere-spin-reverse {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-360deg);
+  }
+}
+
+.glyph-face {
+  position: relative;
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+  color: var(--fg-light);
+}
+
+.glyph-face svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.glyph-stroke {
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+
+.glyph-fill {
+  transition: opacity 320ms ease;
+}
+
+/* Hover is per element: only the letter or nikud under the cursor switches
+   to its stroke state, and returns to fill when the hover ends. The rest of
+   the sphere stays in fill — never a global switch. */
+.sphere-node:hover .glyph-fill {
+  opacity: 0;
+}
+
+.sphere-node:hover .glyph-stroke {
+  opacity: 1;
+}
+
+/* Mid-scroll: the real sphere-window is reparented to <body> and pinned so
+   it can grow from screen 2's peek into screen 3's full reveal. */
+.sphere-window--fixed {
+  position: fixed;
+  z-index: 5;
+}
+
+/* Handed off into screen 3: no more clip window, sphere is fully visible
+   (bleeding naturally off the section edges, same as the reference). */
+.sphere-window--docked {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Screen 3 — full sphere reveal ---- */
+
+.reveal-screen {
+  background: var(--bg-dark);
+}
+
+/* Resting slot for the small stroke logo once scrolled fully into screen 3. */
+.small-logo-slot {
+  position: absolute;
+  left: calc(880 / 1920 * 100%);
+  top: calc(34 / 1080 * 100%);
+  width: calc(160 / 1920 * 100%);
+  height: calc(64 / 1080 * 100%);
+}
+
+.sphere-slot {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.nav-dot {
+  position: absolute;
+  left: calc(1836.5 / 1920 * 100%);
+  top: calc(66.5 / 1080 * 100%);
+  width: calc(14 / 1080 * 100vh);
+  height: calc(14 / 1080 * 100vh);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  z-index: 26;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 500ms ease-out;
+}
+
+.nav-dot.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-dot-fill,
+.nav-dot-stroke {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+  transition: opacity 280ms ease, transform 280ms ease;
+}
+
+.nav-dot-fill {
+  background: var(--fg-light);
+  opacity: 1;
+}
+
+.nav-dot-stroke {
+  border: 1px solid var(--fg-light);
+  opacity: 0;
+  transform: scale(1.35);
+}
+
+.nav-dot:hover .nav-dot-fill,
+.nav-dot.is-open .nav-dot-fill {
+  opacity: 0;
+}
+
+.nav-dot:hover .nav-dot-stroke,
+.nav-dot.is-open .nav-dot-stroke {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.nav-bar {
+  position: absolute;
+  right: calc((1920 - 1794.6) / 1920 * 100%);
+  top: calc(56 / 1080 * 100%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: calc(130 / 1920 * 100%);
+  z-index: 25;
+}
+
+.nav-link {
+  position: relative;
+  background: none;
+  border: 0;
+  padding: 4px 1px 8px;
+  font-family: "Editor Sans", sans-serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(20 / 1080 * 100vh);
+  color: var(--fg-light);
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(var(--dot-dx, 0px), var(--dot-dy, 0px)) scale(0.15);
+  transition: transform 520ms cubic-bezier(0.22, 0.85, 0.2, 1),
+    opacity 360ms ease, letter-spacing 200ms ease;
+  transition-delay: var(--nav-delay, 0ms);
+}
+
+.nav-bar.is-open .nav-link {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(0, 0) scale(1);
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 1px;
+  background: var(--fg-light);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 300ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+.nav-link:hover {
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* dark variant — the same dot/menu interaction, recolored for the
+   light-background screens (after-screen). Only the ink changes; every
+   transition, timing, and hover behavior above is inherited as-is. */
+.nav-dot.is-dark .nav-dot-fill {
+  background: var(--bg-dark);
+}
+
+.nav-dot.is-dark .nav-dot-stroke {
+  border-color: var(--bg-dark);
+}
+
+.nav-link.is-dark {
+  color: var(--bg-dark);
+}
+
+.nav-link.is-dark::after {
+  background: var(--bg-dark);
+}
+
+/* On the after-screen the row reads a touch high against the dot: the
+   button box centers on the dot, but the asymmetric text padding
+   (4px top / 8px bottom) lifts the glyphs above the box center, and the
+   box-vs-dot gap grows with viewport height. Lower this row alone so the
+   button text sits on the dot's vertical center line — the correction
+   tracks height (~0.76vh − 4px, measured) so it holds at every size.
+   Scoped to the dark (after-screen) menu; every other screen is
+   untouched. Moves the row only; the dot is a separate element. */
+.nav-bar.is-dark {
+  transform: translateY(calc(0.76vh - 4px));
+}
+
+/* ---- Letter screens (scalable per-letter routing) ----
+   A fixed overlay above screen 3. It sits BELOW the logo/nav-dot/nav-bar
+   (same elements, never duplicated) so those keep their exact screen 3
+   size/position/behavior automatically, with no reparenting needed. */
+
+.letter-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: var(--bg-dark);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+  perspective: 1400px;
+}
+
+.letter-screen.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Navigation arrows only — the carousel itself carries the composition,
+   with no construction/background line system behind the letters. */
+.letter-blueprint-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.carousel-arrow-hit {
+  position: absolute;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  z-index: 20;
+}
+
+.carousel-arrow-hit--up,
+.carousel-arrow-hit--down {
+  left: calc(959.44 / 1920 * 100% - 22px);
+  width: 44px;
+  height: 44px;
+}
+
+.carousel-arrow-hit--up {
+  top: calc(207 / 1080 * 100% - 22px);
+}
+
+.carousel-arrow-hit--down {
+  top: calc(951 / 1080 * 100% - 22px);
+}
+
+.carousel-arrow-hit--left,
+.carousel-arrow-hit--right {
+  top: calc(573.7 / 1080 * 100% - 22px);
+  width: 44px;
+  height: 44px;
+}
+
+.carousel-arrow-hit--left {
+  left: calc(281 / 1920 * 100% - 22px);
+}
+
+.carousel-arrow-hit--right {
+  left: calc(1646 / 1920 * 100% - 22px);
+}
+
+.letter-stage {
+  position: absolute;
+  left: calc(50% - 100 / 1920 * 100%);
+  top: calc(53.7% - 190 / 1080 * 100%);
+  width: calc(200 / 1920 * 100%);
+  height: calc(380 / 1080 * 100%);
+  color: var(--fg-light);
+  /* pass .letter-screen's perspective through to .letter-content */
+  transform-style: preserve-3d;
+}
+
+.letter-stage svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ---- Double-axis sliding carousel ----
+   One shared 3D space for everything: X letter slots, Y variation slots
+   and the active center are all siblings positioned at the same anchor
+   (the letter-stage center). Each slot's ring position/tilt/depth comes
+   from an inline transform computed in script.js, so navigation can
+   FLIP-animate an item continuously from its preview position into the
+   center — a true sliding carousel, not a swap. */
+.carousel-space {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.carousel-slot {
+  position: absolute;
+  left: 50%;
+  top: 53.7%;
+  width: calc(200 / 1920 * 100%);
+  height: calc(380 / 1080 * 100%);
+  color: var(--fg-light);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+/* Every orbit letter is a direct entry point: click it and the ring sweeps
+   it into the center. */
+.carousel-slot--x {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Frameless carousel item: a bare positioning / 3D wrapper — no card
+   background, border, or rounded container. The letters sit openly in
+   space; only their own extruded forms are visible. */
+.letter-card {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+/* Extruded letter standing OFF its card: a thick stack of darkened copies
+   rising toward the viewer, capped by the light front face. Only the
+   carousel items are extruded — the active center letter stays flat. */
+.glyph-3d {
+  position: absolute;
+  inset: 12%;
+  transform-style: preserve-3d;
+}
+
+.glyph-3d svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.glyph-3d-layer {
+  color: #585349;
+}
+
+/* ---- Center flip card ----
+   Front = the active letter, flat (its regular 2D state).
+   Back = the letter's explanation. Click flips between them. */
+.letter-content {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.flip-card {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(0.35, 0.1, 0.2, 1);
+}
+
+.flip-card.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(18 / 1080 * 100vh);
+  padding: 12% 10%;
+  text-align: center;
+}
+
+.card-back-title {
+  font-family: "Lyon Display", serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: calc(34 / 1080 * 100vh);
+  color: var(--fg-light);
+}
+
+.card-back-text {
+  font-family: "Editor Sans", sans-serif;
+  font-weight: 300;
+  font-size: calc(15 / 1080 * 100vh);
+  line-height: 1.7;
+  color: var(--fg-light);
+  opacity: 0.85;
+}
+
+/* Mount for a real extruded 3D letter (WEBGL canvas) in the card front —
+   same region the flat 2D letter occupies, so 2D and 3D letters sit on the
+   identical center anchor. */
+.letter3d-mount {
+  position: absolute;
+  inset: 12%;
+  cursor: grab;
+}
+
+.letter3d-mount:active {
+  cursor: grabbing;
+}
+
+/* Non-interactive preview instances (orbit / variation slots): the click
+   navigates, so show the same pointer as every other slot. */
+.letter3d-mount--preview,
+.letter3d-mount--preview:active {
+  cursor: pointer;
+}
+
+.letter3d-mount canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.center-letter-svg {
+  position: absolute;
+  inset: 12%;
+  width: 76%;
+  height: 76%;
+  overflow: visible;
+}
+
+/* Return to the sphere — bottom right, minimal, arrow pointing back
+   (rightward, per RTL reading direction). */
+.letter-back {
+  position: absolute;
+  right: calc(71 / 1920 * 100%);
+  bottom: calc(56 / 1080 * 100%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: 0;
+  padding: 6px 2px;
+  font-family: "Editor Sans", sans-serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(18 / 1080 * 100vh);
+  color: var(--fg-light);
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0.85;
+  transition: opacity 200ms ease;
+  z-index: 20;
+}
+
+.letter-back:hover {
+  opacity: 1;
+}
+
+.letter-back .back-arrow {
+  font-style: normal;
+  transition: transform 250ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+.letter-back:hover .back-arrow {
+  transform: translateX(3px);
+}
+
+/* Fixed clone used only during the click -> screen flight animation. */
+.letter-flight {
+  position: fixed;
+  z-index: 45;
+  pointer-events: none;
+  color: var(--fg-light);
+  overflow: visible;
+}
+
+/* ==== Build screen (מסך בניית האות) ====
+   A deeper state of the letter screen: the orbit recedes into a quiet
+   backdrop, the Y-axis and its arrows disappear, and the center stages the
+   two-stage stroke construction of the active letter (build.js). */
+
+/* The orbit itself opens toward the sides in build mode (script.js
+   splitRing) — here the surrounding letters only dim and soften,
+   clearly secondary. */
+.carousel-slot--x {
+  transition: opacity 900ms ease, filter 900ms ease;
+}
+
+.letter-screen.is-build-mode .carousel-slot--x {
+  opacity: 0.3 !important;
+  filter: blur(1.6px);
+  pointer-events: none;
+}
+
+/* the Y-axis variations, the center letter and all four arrows leave the
+   stage entirely on this screen */
+.carousel-slot--y,
+.letter-content,
+.carousel-arrow-hit,
+.letter-blueprint-arrows {
+  transition: opacity 600ms ease;
+}
+
+.letter-screen.is-build-mode .carousel-slot--y,
+.letter-screen.is-build-mode .letter-content {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.letter-screen.is-build-mode .carousel-arrow-hit,
+.letter-screen.is-build-mode .letter-blueprint-arrows {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* While a letter's variations are still gated behind its construction, the
+   vertical arrows (up/down hit areas and the top/bottom blueprint marks)
+   stay away; they fade in together with the strip's reveal. */
+.letter-blueprint-arrows path {
+  transition: opacity 500ms ease;
+}
+
+.letter-screen.is-y-hidden .carousel-arrow-hit--up,
+.letter-screen.is-y-hidden .carousel-arrow-hit--down,
+.letter-screen.is-y-hidden .letter-blueprint-arrows path:nth-child(1),
+.letter-screen.is-y-hidden .letter-blueprint-arrows path:nth-child(2) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* the construction stage — centered on the same optical anchor as the
+   carousel, above the receded orbit */
+.build-stage {
+  position: absolute;
+  left: 50%;
+  top: 53.7%;
+  transform: translate(-50%, -50%);
+  width: min(52vh, 46vw);
+  height: 66vh;
+  color: var(--fg-light); /* the letter assets stroke with currentColor */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 700ms ease;
+  z-index: 18;
+}
+
+.letter-screen.is-build-mode .build-stage {
+  opacity: 1;
+}
+
+/* the construction and the letter share one exact box (and viewBox), so
+   the base forms live inside the letter's true geometry */
+.build-construction,
+.build-final {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  height: 78%;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+}
+
+.build-construction path {
+  fill: none;
+  /* follows the hosting stage's ink: light on the dark build screen,
+     the interface black on the light construction exploration */
+  stroke: currentColor;
+}
+
+/* ==== Construction exploration on the light screen ====
+   The decomposition letters (ש, and the rest as their files arrive) open
+   their exploration as a stroke construction — the same build system and
+   the same typographic size normalization as the dark build screen, in
+   the interface black on the light field. Central and slightly large:
+   the construction is the event of this screen. */
+.xcar-build {
+  position: absolute;
+  inset: 0;
+  color: var(--bg-dark);
+  pointer-events: none;
+}
+
+.xcar-build-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(64vh, 50vw);
+  height: min(64vh, 50vw);
+}
+
+/* ==== The dive into the sphere's core (מסך הליבה) ====
+   Scrolling past screen 3 flies the viewer through the shell of letters
+   into the heart of the typographic sphere, where the התחל core waits. */
+
+.dive-screen {
+  background: var(--bg-dark);
+}
+
+/* camera rig between the shell (which owns the perspective) and the sphere */
+.sphere-camera {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+/* the inner core rig: a light ball at the heart of the letters, with the
+   word התחל calmly orbiting it. Text is laid out at full size and only
+   ever scaled DOWN, so it stays crisp at every point of the flight. */
+.sphere-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 190px;
+  height: 190px;
+  padding: 0;
+  border: 0;
+  background: none;
+  transform: translate(-50%, -50%) scale(var(--core-scale, 0));
+  opacity: var(--core-opacity, 0);
+  pointer-events: none;
+  cursor: pointer;
+  /* one shared 3D space for the ball + the orbiting glyphs, with a local
+     perspective so the orbit reads as a real sphere (kept long, so the
+     depth scaling stays refined rather than dramatic) */
+  transform-style: preserve-3d;
+  perspective: 1500px;
+}
+
+.sphere-core.is-live {
+  pointer-events: auto;
+}
+
+/* the 3D ball: an opaque light sphere at z = 0. Being opaque and centered,
+   it occludes any glyph whose orbit carries it behind (negative z). */
+.sphere-core-ball {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--fg-light);
+}
+
+.sphere-core.is-live:hover .sphere-core-ball {
+  box-shadow: 0 0 0 8px rgba(243, 240, 233, 0.14);
+}
+
+/* the orbit plane, tilted so the word rises over the top and dips behind */
+.core-orbit-tilt {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(-13deg);
+}
+
+/* the great circle spins LEFT around the vertical axis — the word travels
+   the ball's equator, on its surface */
+.core-orbit {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: core-orbit-spin 16s linear infinite;
+}
+
+@keyframes core-orbit-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-360deg);
+  }
+}
+
+/* each glyph is printed TANGENT to the sphere surface: rotated to its
+   place on the ring, then pushed out along that rotated axis by the ball's
+   radius. It turns with the surface — full and readable at the front,
+   foreshortening over the curve at the sides, gone while it faces away —
+   exactly like a band of text wrapped around a ball. Dark ink, so on the
+   light ball it reads as printed on it. */
+.core-letter {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1em;
+  margin: -0.52em -0.5em; /* center the glyph box on the ring point */
+  transform: rotateY(var(--a)) translateZ(95px);
+  color: var(--bg-dark);
+  font-family: "Editor Sans", sans-serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1;
+  text-align: center;
+  backface-visibility: hidden; /* a glyph facing away is never shown */
+}
+
+/* once the core has expanded over everything, the interface rests on the
+   light color — a fixed layer locks the state edge to edge */
+body.is-core-activated::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--fg-light);
+  z-index: 80;
+}
+
+/* every letter and nikud is now directly interactive on the sphere */
+.sphere-node {
+  cursor: pointer;
+}
+
+/* clicked state: the node holds its stroke form until clicked again */
+.sphere-node.is-stroke .glyph-fill {
+  opacity: 0;
+}
+
+.sphere-node.is-stroke .glyph-stroke {
+  opacity: 1;
+}
+
+/* Sphere stroke state: thinner, more delicate line than the raw asset
+   weight — clearly visible at the sphere's rendered sizes, cleaner and
+   more legible. Scoped to the sphere only (carousel/build keep their own
+   asset weights). */
+.sphere .glyph-stroke path,
+.sphere .glyph-stroke polygon,
+.sphere .glyph-stroke polyline,
+.sphere .glyph-stroke line {
+  stroke-width: 1;
+}
+
+/* ==== The screen after the white (מסך ההסבר) ====
+   Mounted the moment the white veil settles: the white simply becomes this
+   screen — her design SVG, animated in place (logo, typewriter text, and
+   three slowly-orbiting rings). */
+.after-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 85; /* above the white veil — visually continuous with it */
+  background: var(--fg-light);
+}
+
+.after-screen .after-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ==== Scroll-on: the horizontal X-axis letter carousel ====
+   The rings flatten into this axis and the letters fan out along it. Black
+   letters (#101010) on the light screen — reference geometry from the earlier
+   horizontal carousel build. Visual only for now: no navigation / click. */
+.xcar {
+  position: fixed;
+  inset: 0;
+  z-index: 86; /* above the after-screen (85) */
+  perspective: 1400px;
+  color: var(--bg-dark); /* #101010 — letters render via currentColor */
+  pointer-events: none;
+}
+
+.xcar-space {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.xcar-slot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14.5vh; /* slightly smaller letters — more air along the band */
+  height: 16.2vh;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  cursor: pointer;
+}
+
+/* inner cell: the press micro-interaction lives here, so it never fights
+   the slot's own carousel transform */
+.xcar-cell {
+  position: absolute;
+  inset: 0;
+}
+
+.xcar-slot svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* minimal chevron arrows — thin stroke, round caps, interface ink */
+.xcar-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--bg-dark);
+  opacity: 0.7;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 200ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.xcar-arrow svg {
+  width: 12px;
+  height: 20px;
+  display: block;
+}
+
+.xcar-arrow--left {
+  left: 3vw;
+}
+
+.xcar-arrow--right {
+  right: 3vw;
+}
+
+.xcar-arrow--left:hover {
+  opacity: 1;
+  transform: translateY(-50%) translateX(-3px);
+}
+
+.xcar-arrow--right:hover {
+  opacity: 1;
+  transform: translateY(-50%) translateX(3px);
+}

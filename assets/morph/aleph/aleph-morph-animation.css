@@ -1,0 +1,31 @@
+/* ============================================================
+   aleph-morph-animation.css
+   Minimal styling for embedding the א morph animation.
+   The animation paints its own background on the canvas; these
+   rules just give the canvas a container to fill.
+   ============================================================ */
+
+.aleph-morph {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;      /* matches the animation's own background */
+  overflow: hidden;
+}
+
+.aleph-morph canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Full-screen overlay variant — use this class instead of a sized
+   container if you want the animation to cover the whole viewport
+   (e.g. as an intro that later fades away):
+
+   .aleph-morph--overlay {
+     position: fixed;
+     inset: 0;
+     z-index: 9999;
+   }
+*/

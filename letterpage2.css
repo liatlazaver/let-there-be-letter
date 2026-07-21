@@ -1,0 +1,516 @@
+/* ==========================================================================
+   ראש מילין — letter screen, system 2 (the ממשק 222 redesign)
+   Black/white, square, typographic, research-oriented. Every measure below
+   is taken from the designer's ש screens (assets/screens222) in the design
+   frame's own pixels (2850x1603) through one unit --u — the SVGs are the
+   source of truth, not an interpretation.
+   ========================================================================== */
+
+/* the running-text face */
+@font-face {
+  font-family: "Narkiss Tam";
+  src: url("assets/fonts/NarkissTamExtended-Light-TRIAL.otf") format("opentype");
+  font-weight: 300;
+}
+@font-face {
+  font-family: "Narkiss Tam";
+  src: url("assets/fonts/NarkissTamExtended-Regular-TRIAL.otf") format("opentype");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Narkiss Tam";
+  src: url("assets/fonts/NarkissTamExtended-Medium-TRIAL.otf") format("opentype");
+  font-weight: 500;
+}
+@font-face {
+  font-family: "Narkiss Tam";
+  src: url("assets/fonts/NarkissTamExtended-Semibold-TRIAL.otf") format("opentype");
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Narkiss Tam";
+  src: url("assets/fonts/NarkissTamExtended-Bold-TRIAL.otf") format("opentype");
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Narkiss Tam";
+  src: url("assets/fonts/NarkissTamExtended-Black-TRIAL.otf") format("opentype");
+  font-weight: 900;
+}
+/* the bracketed-number face — the design's own slim serif italic */
+@font-face {
+  font-family: "Lyon Text";
+  src: url("assets/fonts/LyonTextHLAR-RegularNo2Italic-TRIAL.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+}
+
+.lp2 {
+  --u: calc(100vw / 2850);
+  --hair: calc(100vw / 2850); /* the design's 1px hairline, scaled true */
+  --ink: #101010;
+  --paper: #FDFCF8;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--paper);
+  color: var(--ink);
+  direction: rtl;
+  font-family: "Narkiss Tam", "Editor Sans", sans-serif;
+  overflow: hidden;
+}
+
+body.lp2-open .world,
+body.lp2-open .sky-soften { opacity: 0; pointer-events: none; }
+/* the cursor keeps its design but adapts by contrast: ink on the cream
+   page, paper over the black letter field — always visible */
+body.lp2-open .cursor-dot { background: #101010; }
+body.lp2-open .cursor-ring { border-color: rgba(16, 16, 16, 0.6); }
+body.lp2-open.lp2-on-ink .cursor-dot { background: #FDFCF8; }
+body.lp2-open.lp2-on-ink .cursor-ring { border-color: rgba(253, 252, 248, 0.75); }
+/* the top-nav hover, in the interface's own cursor language: over a pill,
+   the ring swells (a stronger reach of the existing cursor-hot grow) */
+body.lp2-pill-hot .cursor-ring {
+  transform: scale(2.6);
+  opacity: 1;
+}
+
+/* ---- the inversion lens ----
+   A filled circle of pure white blended in DIFFERENCE, so it paints the
+   exact negative of whatever it covers — cream turns ink, ink turns cream,
+   the button's text flips inside it. It tracks the ring (position + swell
+   set inline by the loop) and fades in only over the nav pills. */
+.cursor-lens {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 101;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 50%;
+  background: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  will-change: transform, opacity;
+}
+body.lp2-pill-hot .cursor-lens { opacity: 1; }
+/* the plain ring recedes while the lens is the cursor's body — the swell
+   is carried by the lens, so the effect reads as one clean inverting ball */
+body.lp2-pill-hot .cursor-ring { opacity: 0; }
+/* the tiny point also inverts, so it never vanishes inside the lens */
+body.lp2-pill-hot .cursor-dot { mix-blend-mode: difference; background: #fff; }
+
+/* ---- entry / exit: a sharp horizontal wipe, no fades ---- */
+.lp2 {
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path 460ms cubic-bezier(0.83, 0, 0.17, 1);
+}
+.lp2.is-open { clip-path: inset(0 0 0 0); }
+.lp2.is-leaving { clip-path: inset(0 100% 0 0); }
+
+/* ---- the carousel slide between letters ---- */
+.lp2.slide-in-from-left  { clip-path: none; transform: translateX(-100%); }
+.lp2.slide-in-from-right { clip-path: none; transform: translateX(100%); }
+.lp2.slide-run {
+  transform: translateX(0);
+  transition: transform 520ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.lp2.slide-out-left  { clip-path: none; transform: translateX(-100%); transition: transform 520ms cubic-bezier(0.76, 0, 0.24, 1); }
+.lp2.slide-out-right { clip-path: none; transform: translateX(100%);  transition: transform 520ms cubic-bezier(0.76, 0, 0.24, 1); }
+
+/* ==========================================================================
+   the top bar — h124; pills 259x47 r23.5 at (38.5, 38.5) and (331.5, 38.5)
+   ========================================================================== */
+.lp2-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: calc(var(--u) * 124);
+  border-bottom: var(--hair) solid var(--ink);
+  direction: ltr;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 34);
+  padding-left: calc(var(--u) * 38.5);
+}
+.lp2-pill {
+  position: relative;
+  width: calc(var(--u) * 259);
+  height: calc(var(--u) * 47);
+  padding: 0;
+  border: var(--hair) solid var(--ink);
+  border-radius: calc(var(--u) * 23.5);
+  background: none;
+  color: var(--ink);
+  font-family: "Narkiss Tam", "Editor Sans", sans-serif;
+  font-weight: 400;
+  font-size: calc(var(--u) * 27);
+  cursor: pointer;
+}
+/* the reference's hover: the label underlines (a thin rule wiping in from
+   the reading side) while the cursor swells — colors stay the interface's */
+.lp2-pill::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--u) * 44);
+  right: calc(var(--u) * 44);
+  bottom: calc(var(--u) * 13);
+  height: var(--hair);
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 240ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.lp2-pill:hover::after { transform: scaleX(1); }
+
+/* ==========================================================================
+   the main area: [side 124][black field 1476][info][side 124]
+   ========================================================================== */
+.lp2-main {
+  position: absolute;
+  top: calc(var(--u) * 124);
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  direction: ltr;
+}
+
+/* ---- the folded side columns ---- */
+.lp2-side {
+  width: calc(var(--u) * 124);
+  flex: none;
+  position: relative;
+  background: var(--paper);
+  cursor: pointer;
+  transition: background 160ms linear;
+}
+.lp2-side--l { border-right: var(--hair) solid var(--ink); }
+.lp2-side--r { border-left: var(--hair) solid var(--ink); }
+.lp2-side:hover { background: #efece2; }
+/* the diagonal corner arrows (ref ink: 38×38 at y175..213 — 51 under the
+   column top; 38 in from the left screen edge / 39 in from the right).
+   overflow stays visible so the round-capped 2u stroke isn't clipped at
+   the viewBox edge. */
+.lp2-side-arrow {
+  position: absolute;
+  top: calc(var(--u) * 51);
+  width: calc(var(--u) * 38);
+  height: calc(var(--u) * 38);
+  overflow: visible;
+  display: block;
+}
+.lp2-side--l .lp2-side-arrow { left: calc(var(--u) * 38); }
+.lp2-side--r .lp2-side-arrow { right: calc(var(--u) * 39); }
+.lp2-side-arrow path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* the rotated bracket name: ink ends ~70 design px above the page bottom */
+.lp2-side-name {
+  position: absolute;
+  bottom: calc(var(--u) * 115);
+  left: 50%;
+  transform: translateX(-50%) rotate(90deg);
+  transform-origin: center;
+  white-space: nowrap;
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(var(--u) * 40);
+  line-height: 1;
+}
+
+/* ---- the black letter field ---- */
+.lp2-field {
+  width: calc(var(--u) * 1476);
+  flex: none;
+  position: relative;
+  background: var(--ink);
+}
+.lp2-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* all field strokes carry the design's own 1-unit hairline and scale
+   with it — never a screen-locked width */
+.lp2-art .lp2-frame {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 1;
+}
+/* the bracketed numbers: the design's own slim serif italic —
+   Lyon Text Regular Italic. */
+.lp2-gem {
+  fill: var(--paper);
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 44px; /* svg user units = design px (ref ink: bracket h38.6) */
+  direction: ltr;
+}
+/* component strokes: the ש carries hand-drawn <path> parts (field units); a
+   generic letter carries its own <polygon> strokes (non-scaling). Both read
+   as the same paper hairline, transparent until selected. */
+.lp2-comp path,
+.lp2-comp polygon,
+.lp2-comp polyline {
+  fill: transparent;
+  stroke: var(--paper);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: fill 140ms linear;
+}
+/* the interface carries its own cursor — no native pointer here; the
+   clickable signal is the custom cursor's grow (wired in v12.js) */
+.lp2-comp { cursor: none; }
+/* the hover response: a faint fill previews the selected state and the rim
+   brightens a touch — subtle, sharp, clearly clickable, never decorative.
+   (Not shown once a component is already selected.) */
+.lp2-comp:not(.is-on):hover path,
+.lp2-comp:not(.is-on):hover polygon,
+.lp2-comp:not(.is-on):hover polyline {
+  fill: rgba(253, 252, 248, 0.16);
+  stroke-width: 1.5;
+}
+.lp2-comp.is-on path,
+.lp2-comp.is-on polygon,
+.lp2-comp.is-on polyline { fill: var(--paper); }
+.lp2-base {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 1;
+  pointer-events: none;
+}
+/* the tagin (crowns): a fine paper stem topped by a small square outline,
+   riding the letterform — and CLICKABLE as one set, in the components'
+   exact interaction language: the interface's own cursor, a faint fill
+   preview on hover, full paper heads once selected (the ש reference —
+   heads fill, stems stay strokes). */
+.lp2-tag { pointer-events: none; }
+.lp2-tag line,
+.lp2-tag rect {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  transition: fill 140ms linear;
+}
+/* the padded invisible hit box — the only pointer target, easy to reach */
+.lp2-tag .lp2-tag-hit {
+  fill: none;
+  stroke: none;
+  pointer-events: all;
+  cursor: none;
+}
+.lp2-tag:not(.is-on):hover rect:not(.lp2-tag-hit) {
+  fill: rgba(253, 252, 248, 0.16);
+  stroke-width: 1.5;
+}
+.lp2-tag:not(.is-on):hover line { stroke-width: 1.5; }
+.lp2-tag.is-on rect:not(.lp2-tag-hit) { fill: var(--paper); }
+.lp2-lbl {
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 44px;
+  fill: var(--paper);
+  text-anchor: middle;
+  pointer-events: none;
+  transition: fill 140ms linear;
+}
+.lp2-lbl.is-on { fill: var(--ink); }
+
+/* the central letter (generic template): normalized to the ש's envelope and
+   centered in the frame by GEN_TARGET (see letterpage2.js). Drawn straight
+   into the field SVG, so it carries the same paper hairline as the ש. */
+.lp2-gen {
+  fill: none;
+  stroke: var(--paper);
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   the info panel — physical padding: 85 by the field, 58 by the column;
+   title/subtitle range on the panel's FAR (right-physical) edge; the
+   reading is bottom-anchored; rows bleed edge to edge.
+   ========================================================================== */
+.lp2-info {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  direction: rtl;
+  min-width: 0;
+}
+/* title ink: x2247..2668, y236..326 — right-ranged, "שי״ן [300]": the
+   name in the sans, the gematria in the italic serif */
+.lp2-title {
+  /* ref ink: name cap top y246.7, baseline y307.3 (the title sits 10.4
+     lower than the old cut — the raised gematria breathes above it) */
+  margin: calc(var(--u) * 105.4) calc(var(--u) * 58) 0 calc(var(--u) * 85);
+  font-family: "Narkiss Tam", sans-serif;
+  font-weight: 400; /* Regular — the design's lighter title weight */
+  font-size: calc(var(--u) * 96);
+  line-height: 1;
+  text-align: right;
+}
+/* the gematria superscript: reads first (rightmost), small and raised —
+   ref ink: digits h40 (font 60), digit baseline 33.9 above the name's;
+   ink gap to the name 19.2. The raise is position:relative (applied after
+   layout) so the title's line box — and the name — cannot shift. */
+.lp2-title-gem {
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(var(--u) * 60);
+  position: relative;
+  top: calc(var(--u) * -33.9);
+  margin-left: calc(var(--u) * 11);
+}
+/* subtitle ink: y362..384, h22; underlined exactly at the text width */
+.lp2-sub {
+  /* the sub stays put while the title above it moved down 10.4 — ref ink
+     unchanged: y361.5..384, underline at 385 */
+  margin: calc(var(--u) * 31.1) calc(var(--u) * 58) 0 auto;
+  font-family: "Narkiss Tam", sans-serif;
+  font-weight: 400;
+  font-size: calc(var(--u) * 26);
+  line-height: 1.15;
+  padding-bottom: 0;
+  border-bottom: var(--hair) solid var(--ink);
+  text-align: right;
+}
+.lp2-spacer { flex: 1; }
+/* the reading: full content width (1685..2668), bottom-anchored — 66 from
+   the page bottom at rest, 48 above the first open row; the design's
+   generous reading size (4 lines across the panel) */
+.lp2-body {
+  /* the top margin only ever shows when the reading has grown tall enough
+     to reach the sub's rule — at rest the spacer above absorbs it, so the
+     resting position is exactly as it was */
+  margin: calc(var(--u) * 40) calc(var(--u) * 58) calc(var(--u) * 66) calc(var(--u) * 85);
+  font-family: "Narkiss Tam", sans-serif;
+  font-weight: 400;
+  font-size: calc(var(--u) * 26);
+  line-height: calc(var(--u) * 34.5);
+  text-align: right;
+  /* the readings carry their own paragraph breaks */
+  white-space: pre-line;
+  /* a long reading scrolls INSIDE this column and nowhere else: min-height
+     lets the flex item shrink (its default `auto` is what would otherwise
+     push the panel out of shape), and the bar stays hidden as everywhere
+     else in the interface */
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.lp2-body::-webkit-scrollbar { display: none; }
+.lp2.has-open-rows .lp2-body { margin-bottom: calc(var(--u) * 48); }
+
+/* ---- the tagin reading: the reference (ש תגין) continues the letter's own
+   reading on the SAME 35-grid — the crowns' text begins on the very next
+   line, no seam, and the whole stack keeps the reading's bottom anchor.
+   While it is present the body hands its bottom margin to this block. ---- */
+.lp2-tagin {
+  height: 0;
+  overflow: hidden;
+  margin: 0;
+  transition: height 300ms cubic-bezier(0.7, 0, 0.2, 1),
+              margin-bottom 300ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+.lp2.tagin-on .lp2-body { margin-bottom: 0; }
+.lp2.tagin-on .lp2-tagin { margin-bottom: calc(var(--u) * 66); }
+.lp2.tagin-on.has-open-rows .lp2-tagin { margin-bottom: calc(var(--u) * 48); }
+/* the entrance: a controlled arrival from the reading side (the rows' own
+   side), carrying a fast modern typewrite — characters on a staggered fade
+   in reading order. No carriage, no jitter: typographic, precise. */
+.lp2-tagin-text {
+  margin: 0 calc(var(--u) * 58) 0 calc(var(--u) * 85);
+  font-family: "Narkiss Tam", sans-serif;
+  font-weight: 400;
+  font-size: calc(var(--u) * 26);
+  line-height: calc(var(--u) * 34.5);
+  text-align: right;
+  opacity: 0;
+  transform: translateX(calc(var(--u) * 36));
+  transition: opacity 220ms linear, transform 280ms cubic-bezier(0.33, 0, 0.2, 1);
+}
+.lp2-tagin.is-in .lp2-tagin-text {
+  opacity: 1;
+  transform: none;
+  transition: opacity 260ms linear 60ms,
+              transform 420ms cubic-bezier(0.33, 0, 0.2, 1) 60ms;
+}
+.lp2-tagin-text span { opacity: 0; }
+.lp2-tagin.is-in .lp2-tagin-text span {
+  opacity: 1;
+  transition: opacity 90ms linear; /* per-character delay set inline */
+}
+
+/* ---- the research rows: pitch 173, rules bleeding the full panel ---- */
+.lp2-rows { margin: 0; }
+.lp2-row {
+  height: 0;
+  overflow: hidden;
+  transition: height 280ms cubic-bezier(0.7, 0, 0.2, 1);
+  cursor: pointer;
+}
+.lp2-row.is-open { height: calc(var(--u) * 173); }
+.lp2-row-inner {
+  border-top: var(--hair) solid var(--ink);
+  height: 100%;
+  box-sizing: border-box;
+  position: relative;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 300ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.lp2-row.is-open .lp2-row-inner { transform: scaleX(1); }
+/* name ink per the ref: "[10] יו״ד" — the small raised gem first, then the
+   plain name in the sans (cap top 74.8 under the rule, baseline 104.5,
+   ranged right on the content edge, ink right x2674.9) */
+.lp2-row-name {
+  position: absolute;
+  top: calc(var(--u) * 65.5);
+  right: calc(var(--u) * 52);
+  font-family: "Narkiss Tam", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: calc(var(--u) * 47);
+  line-height: 1;
+}
+/* the row's gematria superscript — the same system as the title's
+   (0.63× the text size, digits raised ~0.56 of the gem em) */
+.lp2-row-gem {
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(var(--u) * 30);
+  position: relative;
+  top: calc(var(--u) * -16.7);
+  margin-left: calc(var(--u) * 8);
+}
+/* the foundational glyph: left-aligned on the panel's 71u edge, top with
+   the row name. Its size is set inline per glyph (cropped ink * one scale)
+   so the letters keep their natural proportions yet share a left edge. */
+.lp2-row-glyph {
+  position: absolute;
+  top: calc(var(--u) * 53);
+  left: calc(var(--u) * 71);
+  color: var(--ink);
+}
+.lp2-row-glyph svg { display: block; overflow: visible; }
+/* the lower foundational letters read as delicate hairlines, not the
+   heavy default glyph stroke */
+.lp2-row-glyph svg * { stroke-width: 0.6px; }
+.lp2-row:hover .lp2-row-name-txt { text-decoration: underline; text-underline-offset: 0.14em; }

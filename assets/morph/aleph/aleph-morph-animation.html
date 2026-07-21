@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>א — morph prototype</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    height: 100%;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+'use strict';
+
+/* ---- interface embed mode (?embed=1&tx&ty&tw&th) ----
+   Runs transparent over the letter screen's black field, maps the FINAL
+   letter exactly onto the given target rect (CSS px of this frame), plays
+   ONCE, and reports back to the parent when the construction lands. */
+const EMBED = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('embed') !== '1') return null;
+    const v = k => parseFloat(q.get(k));
+    const e = { tx: v('tx'), ty: v('ty'), tw: v('tw'), th: v('th') };
+    return [e.tx, e.ty, e.tw, e.th].every(isFinite) ? e : null;
+  } catch (err) { return null; }
+})();
+if (EMBED) {
+  document.documentElement.style.background = 'transparent';
+  document.body.style.background = 'transparent';
+}
+let EMBED_FIT = null;
+let embedDone = false;
+function embedFitFrom(polys, gx, gy) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const poly of polys) for (const p of poly) {
+    const x = gx(p), y = gy(p);
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  const k = Math.min(EMBED.tw / (x1 - x0), EMBED.th / (y1 - y0));
+  return { k,
+    ox: EMBED.tx + EMBED.tw / 2 - (x0 + x1) / 2 * k,
+    oy: EMBED.ty + EMBED.th / 2 - (y0 + y1) / 2 * k };
+}
+
+
+/* ============================================================
+   א morph / build — sequence:
+     1. a circle appears
+     2. the circle's material divides into the two foundational
+        י forms (same circle-opening idea as the ש prototype)
+     3. the diagonal grows in between them, and the two י rotate
+        rigidly into place — the assembled א.
+
+   Geometry from "א.svg". Every path is a pure straight-line
+   polygon morphed corner-to-corner, so edges stay sharp; the
+   only rounding is a brief material merge at the circle→letters
+   moment, which resolves fully crisp. No glow, no soft blur.
+   ============================================================ */
+
+// the two foundational י forms (stage 1) — left one lower, right higher
+const YODS_D = [
+  "M759.963 454.192L786.877 454.045L798.289 468.547L798.489 499.752L774.588 541.302L786.677 502.484L783.794 500.242L754.87 500.422L754.53 446.936L757.927 446.914L759.963 454.192Z",
+  "M958.963 400.192L985.877 400.045L997.289 414.547L997.489 445.752L973.588 487.301L985.677 448.484L982.794 446.242L953.87 446.422L953.53 392.936L956.927 392.914L958.963 400.192Z"
+];
+// the diagonal stroke at its stage-1 position (between the two י)
+const DIAG_MID_D = "M943.978 544.538L817.975 441.384L814 392L943.317 498.471L943.978 544.538Z";
+// the assembled א of stage 2: the two arms + the diagonal
+const ARMS_D = [
+  "M845.53 862.97L819.317 856.889L811.594 840.14L818.629 809.734L851.506 774.824L830.744 809.807L833.035 812.653L861.204 819.169L849.134 871.29L845.82 870.529L845.53 862.97Z",
+  "M915.051 712.036L935.334 729.727L934.301 748.152L913.811 771.688L868.402 787.041L903.145 765.924L902.466 762.335L880.653 743.339L915.776 703L918.338 705.229L915.051 712.036Z"
+];
+const DIAG_FIN_D = "M930.978 858.837L804.975 755.683L801 706.299L930.317 812.77L930.978 858.837Z";
+
+const INK = '#FDFCF8';   // white letterforms on a black ground
+
+/* ---- exact polygon parsing (M / L / H / V / Z only) ---- */
+function parsePoly(d) {
+  const tok = d.match(/[MLHVZ]|-?\d*\.?\d+/gi);
+  const pts = [];
+  let i = 0, x = 0, y = 0;
+  while (i < tok.length) {
+    const c = tok[i++];
+    if (c === 'M' || c === 'L') { x = +tok[i++]; y = +tok[i++]; pts.push({ x, y }); }
+    else if (c === 'H') { x = +tok[i++]; pts.push({ x, y }); }
+    else if (c === 'V') { y = +tok[i++]; pts.push({ x, y }); }
+  }
+  const a = pts[0], b = pts[pts.length - 1];
+  if (Math.hypot(a.x - b.x, a.y - b.y) < 0.01) pts.pop();
+  return pts;
+}
+function centroid(pts) {
+  let x = 0, y = 0;
+  for (const p of pts) { x += p.x; y += p.y; }
+  return { x: x / pts.length, y: y / pts.length };
+}
+function bbox(ptsArrays) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const pts of ptsArrays) for (const p of pts) {
+    if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+  }
+  return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0 };
+}
+const translate = (pts, dx, dy) => pts.map(p => ({ x: p.x + dx, y: p.y + dy }));
+function windCW(pts) {
+  let area = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; area += a.x * b.y - b.x * a.y; }
+  return area < 0 ? pts.slice().reverse() : pts;
+}
+function alignShift(from, to) {
+  const n = from.length;
+  const cf = centroid(from), ct = centroid(to);
+  let best = 0, bestD = Infinity;
+  for (let off = 0; off < n; off++) {
+    let d = 0;
+    for (let i = 0; i < n; i++) {
+      const a = from[i], b = to[(i + off) % n];
+      const dx = (a.x - cf.x) - (b.x - ct.x);
+      const dy = (a.y - cf.y) - (b.y - ct.y);
+      d += dx * dx + dy * dy;
+    }
+    if (d < bestD) { bestD = d; best = off; }
+  }
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = to[(i + best) % n];
+  return out;
+}
+// rotation-aware alignment — corners matched by best-fit rigid rotation,
+// so a flipped arm rotates smoothly into place (no last-second flip)
+function alignRot(from, to) {
+  const n = from.length;
+  const cf = centroid(from), ct = centroid(to);
+  let best = 0, bestR = Infinity;
+  for (let off = 0; off < n; off++) {
+    let sc = 0, sd = 0;
+    for (let i = 0; i < n; i++) {
+      const ax = from[i].x - cf.x, ay = from[i].y - cf.y;
+      const b = to[(i + off) % n];
+      const bx = b.x - ct.x, by = b.y - ct.y;
+      sc += ax * by - ay * bx; sd += ax * bx + ay * by;
+    }
+    const th = Math.atan2(sc, sd);
+    const cr = Math.cos(th), sr = Math.sin(th);
+    let res = 0;
+    for (let i = 0; i < n; i++) {
+      const ax = from[i].x - cf.x, ay = from[i].y - cf.y;
+      const rx = ax * cr - ay * sr, ry = ax * sr + ay * cr;
+      const b = to[(i + off) % n];
+      res += Math.hypot(rx - (b.x - ct.x), ry - (b.y - ct.y));
+    }
+    if (res < bestR) { bestR = res; best = off; }
+  }
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = to[(i + best) % n];
+  return out;
+}
+// resample a polygon to N points: every corner kept exactly, edges
+// filled with collinear points — sharp at rest
+function resampleCorners(poly, N) {
+  const n = poly.length;
+  const seg = []; let L = 0;
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; const d = Math.hypot(b.x - a.x, b.y - a.y); seg.push(d); L += d; }
+  const counts = seg.map(d => Math.max(1, Math.round(N * d / L)));
+  let sum = counts.reduce((a, b) => a + b, 0);
+  while (sum > N) {
+    let mi = -1, mv = -1;
+    for (let i = 0; i < n; i++) if (counts[i] > 1) { const dens = counts[i] / seg[i]; if (dens > mv) { mv = dens; mi = i; } }
+    if (mi < 0) break; counts[mi]--; sum--;
+  }
+  while (sum < N) { let mi = 0, mv = -1; for (let i = 0; i < n; i++) { const d = seg[i] / counts[i]; if (d > mv) { mv = d; mi = i; } } counts[mi]++; sum++; }
+  const out = [];
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n], c = counts[i]; for (let j = 0; j < c; j++) { const f = j / c; out.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }); } }
+  return out;
+}
+
+/* ---- build the aligned keyframes (centered in place) ---- */
+let YODS = YODS_D.map(d => windCW(parsePoly(d)));
+let DIAG_MID = windCW(parsePoly(DIAG_MID_D));
+let ARMS = ARMS_D.map(d => windCW(parsePoly(d)));
+let DIAG_FIN = windCW(parsePoly(DIAG_FIN_D));
+
+const sortByX = arr => arr.slice().sort((a, b) => centroid(a).x - centroid(b).x);
+YODS = sortByX(YODS); ARMS = sortByX(ARMS);
+
+{
+  const bb1 = bbox(YODS.concat([DIAG_MID]));
+  for (let s = 0; s < 2; s++) YODS[s] = translate(YODS[s], -bb1.cx, -bb1.cy);
+  DIAG_MID = translate(DIAG_MID, -bb1.cx, -bb1.cy);
+  const bb2 = bbox(ARMS.concat([DIAG_FIN]));
+  for (let s = 0; s < 2; s++) ARMS[s] = translate(ARMS[s], -bb2.cx, -bb2.cy);
+  DIAG_FIN = translate(DIAG_FIN, -bb2.cx, -bb2.cy);
+}
+for (let s = 0; s < 2; s++) ARMS[s] = alignRot(YODS[s], ARMS[s]);
+DIAG_FIN = alignShift(DIAG_MID, DIAG_FIN);
+
+/* ---- embedded-entry layout: the foundational letters open BALANCED.
+   They are pulled toward the final letter's centre so the composition stays
+   inside the black panel — but never into collision: because every start
+   contracts toward one point, the distances between letters scale exactly by
+   C, so the smallest safe C (a clear minimum gap between every pair of
+   letters, on at least one axis) is computed and used as a hard floor.
+   Contained, separated, evenly balanced; landings untouched. ---- */
+if (EMBED) (() => {
+  const bboxOf = polys => {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const poly of polys) for (const p of poly) {
+      if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+    }
+    return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+  };
+  const FB = bboxOf(ARMS.concat([DIAG_FIN]));
+  const groups = [[YODS[0]], [YODS[1]], [DIAG_MID]].map(polys => ({ polys, b: bboxOf(polys) }));
+  const K = Math.min(EMBED.tw / (FB.x1 - FB.x0), EMBED.th / (FB.y1 - FB.y0));
+  const OX = EMBED.tx + EMBED.tw / 2 - FB.cx * K;
+  const OY = EMBED.ty + EMBED.th / 2 - FB.cy * K;
+  const W = window.innerWidth, H = window.innerHeight;
+  const M = Math.min(W, H) * 0.03;          // containment margin
+  const GAP = Math.min(W, H) * 0.025 / K;   // min letter-to-letter gap (glyph units)
+  let Csep = 0.4;
+  for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) {
+    const a = groups[i].b, b = groups[j].b;
+    const dx = Math.abs(a.cx - b.cx), dy = Math.abs(a.cy - b.cy);
+    const needX = (a.x1 - a.x0 + b.x1 - b.x0) / 2 + GAP;
+    const needY = (a.y1 - a.y0 + b.y1 - b.y0) / 2 + GAP;
+    const cands = [];
+    if (dx > 1e-6) cands.push(needX / dx);
+    if (dy > 1e-6) cands.push(needY / dy);
+    if (!cands.length) continue;            // concentric by design — leave as is
+    const cPair = Math.min(...cands);       // the cheapest axis to stay apart on
+    if (cPair > Csep) Csep = cPair;
+  }
+  Csep = Math.min(Csep, 0.95);
+  const fits = c => groups.every(g => {
+    const dx = (1 - c) * (FB.cx - g.b.cx), dy = (1 - c) * (FB.cy - g.b.cy);
+    return OX + (g.b.x0 + dx) * K >= M && OX + (g.b.x1 + dx) * K <= W - M &&
+           OY + (g.b.y0 + dy) * K >= M && OY + (g.b.y1 + dy) * K <= H - M;
+  });
+  let C = 0.78;
+  while (C - 0.001 > Csep && !fits(C)) C -= 0.04; // contract for containment,
+  C = Math.max(C, Csep);                          // but never into collision
+  /* diagnostics for the interface-side audit */
+  const rects = groups.map(g => {
+    const dx = (1 - C) * (FB.cx - g.b.cx), dy = (1 - C) * (FB.cy - g.b.cy);
+    return { x: OX + (g.b.x0 + dx) * K, y: OY + (g.b.y0 + dy) * K,
+             w: (g.b.x1 - g.b.x0) * K, h: (g.b.y1 - g.b.y0) * K };
+  });
+  let minGap = Infinity;
+  for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+    const a = rects[i], b = rects[j];
+    const gx = Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w);
+    const gy = Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h);
+    minGap = Math.min(minGap, Math.max(gx, gy));
+  }
+  window.__layout = { C: +C.toFixed(3), Csep: +Csep.toFixed(3), panel: [W, H],
+    minGap: rects.length > 1 ? +minGap.toFixed(1) : null,
+    bounds: rects.length ? [
+      +Math.min.apply(null, rects.map(r => r.x)).toFixed(1),
+      +Math.min.apply(null, rects.map(r => r.y)).toFixed(1),
+      +Math.max.apply(null, rects.map(r => r.x + r.w)).toFixed(1),
+      +Math.max.apply(null, rects.map(r => r.y + r.h)).toFixed(1)] : null };
+  groups.forEach(g => {
+    const dx = (1 - C) * (FB.cx - g.b.cx), dy = (1 - C) * (FB.cy - g.b.cy);
+    g.polys.forEach(poly => poly.forEach(p => { p.x += dx; p.y += dy; }));
+    if (g.cf) { g.cf[0] += dx; g.cf[1] += dy; }
+  });
+})();
+
+
+// diagonal source: collapsed onto its own center — it grows outward
+const DIAG_C = centroid(DIAG_MID);
+const DIAG0 = DIAG_MID.map(() => ({ x: DIAG_C.x, y: DIAG_C.y }));
+
+/* ---- circle → two foundational י (the opening) ----
+   The disk is divided into two vertical halves; at rest they tile
+   the whole disk (reads as one clean circle), and as they morph
+   out the circle divides into the two foundational forms. */
+const N_OPEN = 72;
+const bbY = bbox(YODS);
+const CIRCLE_R = 0.60 * Math.max(bbY.w, bbY.h);
+let CIRCLE = [];
+for (let i = 0; i < N_OPEN; i++) {
+  const a = -Math.PI / 2 + 2 * Math.PI * i / N_OPEN;
+  CIRCLE.push({ x: Math.cos(a) * CIRCLE_R, y: Math.sin(a) * CIRCLE_R });
+}
+CIRCLE = windCW(CIRCLE);
+function buildStrip(x0, x1) {
+  const R = CIRCLE_R, arcN = 26, pts = [];
+  for (let i = 0; i <= arcN; i++) { const x = x0 + (x1 - x0) * i / arcN; pts.push({ x, y: -Math.sqrt(Math.max(0, R * R - x * x)) }); }
+  for (let i = 0; i <= arcN; i++) { const x = x1 + (x0 - x1) * i / arcN; pts.push({ x, y: Math.sqrt(Math.max(0, R * R - x * x)) }); }
+  return pts;
+}
+const XS = [-CIRCLE_R, 0, CIRCLE_R];
+const STRIP = [buildStrip(XS[0], XS[1]), buildStrip(XS[1], XS[2])].map(s => resampleCorners(windCW(s), N_OPEN));
+// each foundational י resampled and matched corner-for-corner to its half
+const YOD_N = YODS.map((y, s) => alignShift(STRIP[s], resampleCorners(y, N_OPEN)));
+
+/* ---- morph ---- */
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+function lagWeights(from, to) {
+  const cf = centroid(from), ct = centroid(to);
+  let dx = ct.x - cf.x, dy = ct.y - cf.y;
+  const mag = Math.hypot(dx, dy);
+  if (mag < 1) { dx = 0; dy = 1; } else { dx /= mag; dy /= mag; }
+  const proj = from.map(p => p.x * dx + p.y * dy);
+  const mn = Math.min(...proj), mx = Math.max(...proj);
+  const span = (mx - mn) || 1;
+  return proj.map(v => 1 - (v - mn) / span);
+}
+// radial split adhesion: outward edge leads, inner edge (facing the
+// disk centre) lingers — a sticky material split, resolving sharp
+function splitWeights(strip) {
+  const c = centroid(strip);
+  let ux = c.x, uy = c.y;
+  const m = Math.hypot(ux, uy);
+  if (m < 1) { ux = 1; uy = 0; } else { ux /= m; uy /= m; }
+  const proj = strip.map(p => p.x * ux + p.y * uy);
+  const mn = Math.min(...proj), mx = Math.max(...proj);
+  const span = (mx - mn) || 1;
+  return proj.map(v => 1 - (v - mn) / span);
+}
+function morphShape(from, to, weights, t, lag) {
+  const n = from.length;
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const local = Math.min(1, Math.max(0, t * (1 + lag) - weights[i] * lag));
+    const e = easeInOut(local);
+    out[i] = { x: from[i].x + (to[i].x - from[i].x) * e, y: from[i].y + (to[i].y - from[i].y) * e };
+  }
+  return out;
+}
+// stage 2 is rigid: once the two י exist they never deform — each
+// travels to its place as itself (rotation + translation, Kabsch)
+function rigidTransform(from, to) {
+  const cf = centroid(from), ct = centroid(to);
+  let sc = 0, sd = 0;
+  for (let i = 0; i < from.length; i++) {
+    const ax = from[i].x - cf.x, ay = from[i].y - cf.y;
+    const bx = to[i].x - ct.x, by = to[i].y - ct.y;
+    sc += ax * by - ay * bx; sd += ax * bx + ay * by;
+  }
+  return { cf, ct, theta: Math.atan2(sc, sd) };
+}
+function rigidMorph(from, rig, e) {
+  const ang = rig.theta * e;
+  const cx = rig.cf.x + (rig.ct.x - rig.cf.x) * e;
+  const cy = rig.cf.y + (rig.ct.y - rig.cf.y) * e;
+  const cr = Math.cos(ang), sr = Math.sin(ang);
+  return from.map(p => {
+    const x = p.x - rig.cf.x, y = p.y - rig.cf.y;
+    return { x: cx + x * cr - y * sr, y: cy + x * sr + y * cr };
+  });
+}
+
+const LAG_SPLIT = 0.92; // circle → two י: the halves adhere, stretch, release
+const LAG_BUILD = 0.55; // the diagonal's growth stretch
+const GOO_RMAX = 30;    // peak blur of the split's smooth-union
+const GOO_K = 70;       // threshold contrast — merged edges stay hard
+
+/* ---- timeline (seconds): circle → two י → diagonal + build → א ---- */
+const TL = {
+  circleStart: 0.10, circleDur: 0.32,             // the circle scales in
+  splitStart: 0.55, splitDur: 1.10, splitStagger: 0.10, // circle divides into the two י
+  diagStart: 0.45, diagDur: 0.70,                 // the diagonal grows in between them
+  buildStart: 1.05, buildDur: 1.15, buildStagger: 0.10, // the two י rotate into the א
+  end: 2.45, holdEnd: 2.0
+};
+
+const W_split = STRIP.map(splitWeights);
+const W_dgrow = lagWeights(DIAG0, DIAG_MID);
+const RIG_build = YODS.map((y, s) => rigidTransform(y, ARMS[s]));
+const RIG_diag = rigidTransform(DIAG_MID, DIAG_FIN);
+
+/* ---- render ---- */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const off = document.createElement('canvas');
+const offctx = off.getContext('2d');
+let vw = 0, vh = 0, dpr = 1;
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  vw = window.innerWidth; vh = window.innerHeight;
+  canvas.width = vw * dpr; canvas.height = vh * dpr;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function drawShape(pts, scale, ox, oy, c) {
+  c = c || ctx;
+  c.beginPath();
+  c.moveTo(ox + pts[0].x * scale, oy + pts[0].y * scale);
+  for (let i = 1; i < pts.length; i++) c.lineTo(ox + pts[i].x * scale, oy + pts[i].y * scale);
+  c.closePath();
+  c.fill();
+}
+
+// smooth-union pass — only the circle → letters moment. Shapes drawn
+// to an offscreen buffer, composited through blur → high contrast:
+// near forms fuse with a rounded material bridge, edges stay hard.
+function drawMerged(drawFn, R) {
+  if (R <= 0.5) { drawFn(ctx); return; }
+  if (off.width !== canvas.width || off.height !== canvas.height) { off.width = canvas.width; off.height = canvas.height; }
+  offctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  offctx.fillStyle = '#000';
+  offctx.fillRect(0, 0, vw, vh);
+  offctx.fillStyle = '#fff';
+  drawFn(offctx);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = `blur(${R * dpr}px) contrast(${GOO_K})`;
+  ctx.drawImage(off, 0, 0);
+  ctx.filter = 'none';
+  ctx.restore();
+}
+
+const phase = (t, start, dur) => Math.min(1, Math.max(0, (t - start) / dur));
+
+const SPEED = 1.5; // v2: global 1.5x tempo — every stage scaled uniformly
+let t0 = performance.now();
+document.body.addEventListener('click', () => { t0 = performance.now(); });
+let freezeAt = null;
+window.__freeze = sec => { freezeAt = sec; };
+window.__unfreeze = () => { freezeAt = null; t0 = performance.now(); };
+window.__setT = sec => { t0 = performance.now() - sec * 1000; };
+
+function frame(now) {
+  let t = freezeAt !== null ? freezeAt : (now - t0) * SPEED / 1000;
+  const total = TL.end + TL.holdEnd;
+  if (freezeAt === null && t > total) {
+    if (EMBED) t = TL.end; else { t0 = now; t = 0; }
+  }
+  if (EMBED && !embedDone && t >= TL.end) {
+    embedDone = true;
+    try { parent.postMessage({ type: 'morph-done', glyph: 'א' }, '*'); } catch (err) {}
+  }
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (EMBED) ctx.clearRect(0, 0, vw, vh);
+  else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh); }
+
+  let scale = Math.min(vw / 460, vh / 400);
+  let ox = vw / 2, oy = vh / 2;
+  if (EMBED) {
+    if (!EMBED_FIT) EMBED_FIT = embedFitFrom(ARMS.concat([DIAG_FIN]), p => p.x, p => p.y);
+    scale = EMBED_FIT.k; ox = EMBED_FIT.ox; oy = EMBED_FIT.oy;
+  }
+  ctx.fillStyle = INK;
+
+  // ---- opening: the circle appears, then divides into the two י ----
+  if (false) { // v2: circle opening removed — starts directly from the two foundational yods
+    if (t < TL.splitStart) {
+      const cg = easeOut(phase(t, TL.circleStart, TL.circleDur));
+      if (cg > 0) drawMerged(c => {
+        for (let s = 0; s < 2; s++) drawShape(STRIP[s].map(p => ({ x: p.x * cg, y: p.y * cg })), scale, ox, oy, c);
+      }, 0);
+    } else {
+      const sg = phase(t, TL.splitStart, TL.splitDur + TL.splitStagger);
+      let R;
+      if (sg < 0.15) R = GOO_RMAX * (sg / 0.15);
+      else if (sg < 0.70) R = GOO_RMAX * (1 - (sg - 0.15) / 0.55);
+      else R = 0;
+      drawMerged(c => {
+        for (let s = 0; s < 2; s++) {
+          const k = 1 - s; // the right (higher) י leads
+          const pS = phase(t, TL.splitStart + k * TL.splitStagger, TL.splitDur);
+          drawShape(morphShape(STRIP[s], YOD_N[s], W_split[s], pS, LAG_SPLIT), scale, ox, oy, c);
+        }
+      }, R);
+    }
+  } else {
+    // ---- build: the two foundational י rotate rigidly into the א ----
+    for (let s = 0; s < 2; s++) {
+      const k = 1 - s;
+      const pB = phase(t, TL.buildStart + k * TL.buildStagger, TL.buildDur);
+      if (pB >= 1) drawShape(ARMS[s], scale, ox, oy);
+      else if (pB > 0) drawShape(rigidMorph(YODS[s], RIG_build[s], easeInOut(pB)), scale, ox, oy);
+      else drawShape(YODS[s], scale, ox, oy);
+    }
+  }
+
+  // ---- the diagonal grows in between the two י, then travels with them ----
+  const pG = phase(t, TL.diagStart, TL.diagDur);
+  const pM = phase(t, TL.buildStart, TL.buildDur);
+  if (pM >= 1) drawShape(DIAG_FIN, scale, ox, oy);
+  else if (pM > 0) drawShape(rigidMorph(DIAG_MID, RIG_diag, easeInOut(pM)), scale, ox, oy);
+  else if (pG > 0) drawShape(morphShape(DIAG0, DIAG_MID, W_dgrow, pG, LAG_BUILD), scale, ox, oy);
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

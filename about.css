@@ -1,0 +1,476 @@
+/* ==========================================================================
+   ראש מילין — the אודות screen (references: אודות ראש מילין.svg and
+   על הפרויקט.svg — the ממשק 222 revision).
+   A black shelf under the white bar: two selectable spines and the leaning
+   ויהי אות volume. A clicked spine slides its cover to the shelf's right
+   edge while its pages spread open behind it; the reading scrolls inside,
+   reported by the hairline track and its travelling dot. Every measure is
+   taken from the two reference strips in design pixels through --u.
+   ========================================================================== */
+.about {
+  --u: calc(100vw / 2850);
+  --hair: calc(100vw / 2850);
+  --ink: #101010;
+  --paper: #FDFCF8;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--paper);
+  color: var(--ink);
+  direction: rtl;
+  font-family: "Narkiss Tam", "Editor Sans", sans-serif;
+  overflow: hidden;
+}
+/* entry / exit: the interface's sharp wipe */
+.about {
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path 460ms cubic-bezier(0.83, 0, 0.17, 1);
+}
+.about.is-open { clip-path: inset(0 0 0 0); }
+.about.is-leaving { clip-path: inset(0 100% 0 0); }
+
+body.about-open .world,
+body.about-open .sky-soften { opacity: 0; pointer-events: none; }
+body.about-open .cursor-dot { background: #101010; }
+body.about-open .cursor-ring { border-color: rgba(16, 16, 16, 0.6); }
+body.about-open.ab-on-ink .cursor-dot { background: #FDFCF8; }
+body.about-open.ab-on-ink .cursor-ring { border-color: rgba(253, 252, 248, 0.75); }
+
+/* ==== the field ==== */
+.ab-field {
+  position: absolute;
+  top: calc(var(--u) * 124);
+  left: 0; right: 0; bottom: 0;
+  background: var(--ink);
+  color: var(--paper);
+  overflow: hidden;
+}
+.ab-edge {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: calc(var(--u) * 2726.5);
+  width: var(--hair);
+  background: var(--paper);
+}
+
+/* ==== the resting title: אודות over [ותודות], centred on the shelf ==== */
+.ab-title {
+  position: absolute;
+  left: calc(var(--u) * 1427);
+  transform: translateX(-50%);
+  top: calc(var(--u) * 424);
+  text-align: center;
+  white-space: nowrap;
+}
+.ab-title-main {
+  font-weight: 400;
+  font-size: calc(var(--u) * 240);
+  line-height: 1;
+}
+.ab-title-sub {
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-size: calc(var(--u) * 250);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-top: calc(var(--u) * 46);
+  /* the writing reveal: a clip that sweeps the glyphs in from the reading
+     side (right, for Hebrew) — no span-splitting, so type/tracking/position
+     stay exactly as designed; only visibility is drawn. Hidden until the
+     entrance timer arms `.is-writing`. The -14% padding on the still edges
+     keeps the italic overhang from ever being clipped. */
+  clip-path: inset(-14% -14% -14% 100%);
+  transition: clip-path 900ms cubic-bezier(0.35, 0, 0.25, 1);
+}
+.ab-title-sub.is-writing { clip-path: inset(-14% -14% -14% -14%); }
+@media (prefers-reduced-motion: reduce) {
+  .ab-title-sub { transition: none; }
+}
+
+/* ==== the spines (each doubles as its book's sliding cover) ==== */
+.ab-spine {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: var(--ink);
+  cursor: pointer;
+  transition: left 560ms cubic-bezier(0.83, 0, 0.17, 1),
+              width 560ms cubic-bezier(0.83, 0, 0.17, 1),
+              background 200ms linear;
+  border-left: var(--hair) solid var(--paper);
+  border-right: var(--hair) solid var(--paper);
+}
+.ab-spine:hover { background: rgba(253, 252, 248, 0.07); }
+.ab-spine--project { left: calc(var(--u) * 124.5); width: calc(var(--u) * 164); }
+.ab-spine--milin   { left: calc(var(--u) * 288.5); width: calc(var(--u) * 162); border-left: none; }
+
+.ab-spine-title,
+.ab-spine-label {
+  position: absolute;
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 1;
+}
+/* the title reads top-to-bottom: rotate(-90) about the top-left corner, so
+   the pin (`top`) sits at the FOOT of the run (the last letter) and the text
+   climbs from there up to its head — the reading-start letter ע. To land ε on
+   the reference's y91 line the pin is therefore set to 91 + the run's own
+   length, so both titles' ε share y91 while their feet fall where the text
+   ends. */
+.ab-spine-title,
+.ab-spine-label {
+  transform: rotate(-90deg);
+  transform-origin: 0 0;
+}
+.ab-spine-title {
+  font-weight: 400;
+  font-size: calc(var(--u) * 50);
+}
+/* project title run ≈ 299u long → foot at 91 + 299 = 390 (ε on y91) */
+.ab-spine--project .ab-spine-title { left: calc(var(--u) * 47.1); top: calc(var(--u) * 390); }
+.ab-spine--project .ab-spine-label { left: calc(var(--u) * 65.4); top: calc(var(--u) * 1346); }
+/* milin title run ≈ 331u long → foot at 91 + 331 = 422.3 (ε on y91) */
+.ab-spine--milin .ab-spine-title { left: calc(var(--u) * 55); top: calc(var(--u) * 422.3); }
+.ab-spine--milin .ab-spine-label { left: calc(var(--u) * 67.3); top: calc(var(--u) * 1346); }
+/* the label stands on the floor: pinned by its END corner (the box's
+   bottom-left maps to the run's low end), so both labels' ink bottoms
+   share the reference's y1346 line */
+/* the bracketed label carries the design's 22% tracking */
+.ab-spine-label {
+  font-weight: 300;
+  font-size: calc(var(--u) * 24);
+  letter-spacing: 0.22em;
+}
+
+/* ==== the leaning ויהי אות volume (the 222 revision: a 127-wide slab
+   leaning 12° with its head floating below the ceiling, cut by the floor;
+   ref top-left corner x2132/x464, y89) ==== */
+/* the volume falls inside its own stage: a transparent box pinned to the
+   shelf's interior, its right wall on the white stroke (2726.5u). Nothing the
+   book does can paint past that wall — overflow is clipped here — so the fall
+   is guaranteed to stay within the frame at every angle and aspect. The stage
+   never takes the pointer, so the spines keep their hover and click. */
+.ab-tilted-clip {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 0;
+  right: calc(var(--u) * 123.5); /* the inner face of the right white stroke */
+  overflow: hidden;
+  pointer-events: none;
+}
+.ab-tilted {
+  position: absolute;
+  /* left/top place the slab so that, pivoting on its FOOT (the bottom-left,
+     spine-side corner — transform-origin below), the resting rotate(-12deg)
+     renders in exactly the same spot the design has always held it. These are
+     measured, not guessed: the values at which the foot-pivot rest matches the
+     old head-pivot rest to the pixel. */
+  left: calc(var(--u) * 964.6);
+  top: calc(var(--u) * 36.22);
+  width: calc(var(--u) * 127);
+  /* the volume keeps its full length through the whole fall — it never scales,
+     shrinks or squashes. Only its angle and its position change. */
+  height: calc(var(--u) * 2400);
+  background: var(--paper);
+  /* ONE pivot for the whole life of the motion: the foot — the spine-side
+     bottom corner. Rest and fall are BOTH `translate() rotate()` about it, so
+     the browser interpolates the turn and the travel together as a single rigid
+     swing (never a decomposed matrix slide), and the return is the exact
+     reverse of that swing rather than a drag back into place. */
+  transform-origin: 0% 100%;
+  transform: rotate(-12.04deg);
+  /* this transition governs the RETURN — the element wears it when it settles
+     back onto its resting rule: a calm, smooth lift back up the same arc,
+     a touch longer and gentler than the fall, no bounce. */
+  transition: transform 1040ms cubic-bezier(0.4, 0.04, 0.34, 1);
+}
+/* a book opens → the ויהי אות volume loses its balance and topples: it swings a
+   full quarter-turn clockwise about its foot AND travels right into the gap,
+   the two folded into one `translate() rotate()` so the head arcs down and to
+   the right the whole way and the slab comes to rest flat on its back. It keeps
+   its full length, so it runs off the right of the frame; the clip stage above
+   cuts it cleanly at the white stroke — it is meant to fall partly out of view,
+   never to shrink to stay in. The white face never turns away, so the spine
+   keeps facing the reader. This transition governs the FALL: slow to tip
+   (losing balance), gathering through the middle under gravity, settling onto
+   its back without a bounce. */
+.ab-field[data-state="open-milin"] .ab-tilted,
+.ab-field[data-state="open-project"] .ab-tilted {
+  /* the translate carries it right into the gap AND downward (the y term), so
+     gravity is felt from the first moment rather than only at the end of the
+     arc; the rotate takes it flat onto its back. */
+  transform: translate(calc(var(--u) * 1050), calc(var(--u) * 380)) rotate(90deg);
+  transition: transform 940ms cubic-bezier(0.5, 0, 0.35, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* stillness, when asked for: the volume holds its standing lean, no fall */
+  .ab-tilted { transition: none; }
+  .ab-field[data-state="open-milin"] .ab-tilted,
+  .ab-field[data-state="open-project"] .ab-tilted {
+    transform: rotate(-12.04deg);
+  }
+}
+/* the name reads top-to-bottom along the slab, sitting ON the white face
+   below the head — not floating above it. rotate(-90) about the top-left pins
+   the run's foot (ת) at `top`, its head (ו) climbing to top − run-length; with
+   top:368 the run's head ו lands ~190u down the slab from its head corner,
+   the whole name resting inside the white book as in the reference. */
+.ab-tilted-label {
+  position: absolute;
+  left: calc(var(--u) * 40.9);
+  top: calc(var(--u) * 368);
+  transform: rotate(-90deg);
+  transform-origin: 0 0;
+  color: var(--ink);
+  font-size: calc(var(--u) * 46);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ==== the pages: closed to nothing at rest, spread open per state ==== */
+.ab-panel {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 0;
+  background: var(--ink);
+  overflow: hidden;
+  /* borders exist only while the book is open — a collapsed panel must not
+     paint a stray hairline over its neighbour's pages */
+  border-left: var(--hair) solid transparent;
+  border-right: var(--hair) solid transparent;
+  transition: width 560ms cubic-bezier(0.83, 0, 0.17, 1),
+              left 560ms cubic-bezier(0.83, 0, 0.17, 1);
+}
+.ab-field[data-state="open-milin"] .ab-panel--milin,
+.ab-field[data-state="open-project"] .ab-panel--project { border-color: var(--paper); }
+.ab-panel--project { left: calc(var(--u) * 124.5); }
+.ab-panel--milin   { left: calc(var(--u) * 288.5); }
+
+/* the open shelf states (222: the spread widened to the full 1667 strip) */
+.ab-field[data-state="open-milin"] .ab-panel--milin { width: calc(var(--u) * 1668); }
+.ab-field[data-state="open-milin"] .ab-spine--milin {
+  left: calc(var(--u) * 1956.5);
+  border-left: var(--hair) solid var(--paper);
+}
+/* the ויהי אות volume no longer slides on `left`: its whole move into the gap
+   now lives in the transform (see .ab-tilted), so the topple and the travel are
+   one coordinated swing. */
+
+.ab-field[data-state="open-project"] .ab-panel--project { width: calc(var(--u) * 1667); }
+.ab-field[data-state="open-project"] .ab-spine--project { left: calc(var(--u) * 1791.5); width: calc(var(--u) * 162); }
+/* the un-selected milin book stands as its own slab beside the cover —
+   its body hides the resting title behind it, and the leaning volume
+   floats just past its right edge */
+.ab-field[data-state="open-project"] .ab-spine--milin {
+  left: calc(var(--u) * 1953.5);
+  border-left: var(--hair) solid var(--paper);
+}
+
+/* the resting title stays put and is simply covered by the spreading pages */
+
+/* ==== the reading inside a panel ==== */
+.ab-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  opacity: 0;
+  transition: opacity 200ms linear;
+}
+.ab-scroll::-webkit-scrollbar { display: none; }
+.ab-field[data-state="open-milin"] .ab-panel--milin .ab-scroll,
+.ab-field[data-state="open-project"] .ab-panel--project .ab-scroll {
+  opacity: 1;
+  transition: opacity 320ms linear 300ms;
+}
+
+/* the scroll track: the hairline at the panel's inner right + the dot
+   (each strip states its own inset: milin 90, project 98.5) */
+.ab-track {
+  position: absolute;
+  top: 0; bottom: 0;
+  right: calc(var(--u) * 90);
+  width: var(--hair);
+  background: var(--paper);
+  opacity: 0;
+  transition: opacity 320ms linear 300ms;
+  pointer-events: none;
+}
+.ab-panel--project .ab-track { right: calc(var(--u) * 98.5); }
+.ab-field[data-state="open-milin"] .ab-panel--milin .ab-track,
+.ab-field[data-state="open-project"] .ab-panel--project .ab-track { opacity: 1; }
+.ab-dot {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(var(--u) * 67);
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 36);
+  border-radius: 50%;
+  background: var(--paper);
+  transition: top 120ms linear;
+}
+.ab-panel--project .ab-dot { top: calc(var(--u) * 64); }
+
+/* ==== the shared reading ink (the 222 strips) ==== */
+.ab-content { position: relative; }
+.ab-content--milin { height: calc(var(--u) * 6830); }
+.ab-content--project { height: calc(var(--u) * 5288); }
+/* section titles: the slim serif italic, centred over their hairline */
+.ab-h {
+  position: absolute;
+  margin: 0;
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(var(--u) * 50);
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+/* body columns are justified, paragraph breaks carried by the text itself */
+.ab-body {
+  position: absolute;
+  margin: 0;
+  font-size: calc(var(--u) * 26);
+  line-height: calc(var(--u) * 35);
+  text-align: justify;
+  text-align-last: right;
+  white-space: pre-line;
+}
+/* captions: upright, letterspaced, hung on the image's edge */
+.ab-cap {
+  position: absolute;
+  margin: 0;
+  font-weight: 300;
+  font-size: calc(var(--u) * 19.8);
+  letter-spacing: 0.22em;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* the [תודות] mark shares the section-title voice */
+.ab-mark {
+  position: absolute;
+  margin: 0;
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-size: calc(var(--u) * 50);
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+.ab-img { position: absolute; display: block; }
+.ab-rule {
+  position: absolute;
+  height: var(--hair);
+  background: var(--paper);
+}
+
+/* ==== milin layout (אודות ראש מילין.svg; strip width 1668) ====
+   sections 1-2 sit on the 176.5..1382.5 column, section 3 on 230..1437 —
+   the reference's own two registers */
+.ab-m-h1 { left: calc(var(--u) * 176.5); width: calc(var(--u) * 1206); top: calc(var(--u) * 135); }
+.ab-m-rule1 { left: calc(var(--u) * 176.5); width: calc(var(--u) * 1206); top: calc(var(--u) * 212.5); }
+.ab-m-body1 { left: calc(var(--u) * 176.5); width: calc(var(--u) * 1206); top: calc(var(--u) * 248.9); }
+.ab-m-portrait { left: calc(var(--u) * 358.5); top: calc(var(--u) * 821); width: calc(var(--u) * 839); height: calc(var(--u) * 1177); object-fit: cover; }
+.ab-m-cap1 { right: calc(var(--u) * 473); top: calc(var(--u) * 2029.6); }
+.ab-m-h2 { left: calc(var(--u) * 176.5); width: calc(var(--u) * 1206); top: calc(var(--u) * 2346.4); }
+.ab-m-rule2 { left: calc(var(--u) * 176.5); width: calc(var(--u) * 1206); top: calc(var(--u) * 2428.5); }
+.ab-m-body2 { left: calc(var(--u) * 176.5); width: calc(var(--u) * 1206); top: calc(var(--u) * 2464.9); }
+/* the cover photograph, cropped as the reference's pattern crops it */
+.ab-m-cover {
+  position: absolute;
+  left: calc(var(--u) * 358.5);
+  top: calc(var(--u) * 2969);
+  width: calc(var(--u) * 839);
+  height: calc(var(--u) * 1312);
+  overflow: hidden;
+}
+.ab-m-cover img {
+  position: absolute;
+  left: calc(var(--u) * -107.7);
+  top: calc(var(--u) * -23.4);
+  width: calc(var(--u) * 946.6);
+  height: calc(var(--u) * 1335.4);
+}
+.ab-m-cap2 { right: calc(var(--u) * 473); top: calc(var(--u) * 4314.6); }
+.ab-m-body3 { left: calc(var(--u) * 230); width: calc(var(--u) * 1207); top: calc(var(--u) * 4485.9); }
+.ab-m-page-left  { left: calc(var(--u) * 230); top: calc(var(--u) * 4869); width: calc(var(--u) * 607); height: calc(var(--u) * 832); object-fit: cover; }
+.ab-m-page-right { left: calc(var(--u) * 837); top: calc(var(--u) * 4870); width: calc(var(--u) * 600); height: calc(var(--u) * 831); object-fit: cover; }
+/* the second spread — התגין on the right, הנקודות on the left (reading
+   order), set on the first spread's own frames 100 below it */
+.ab-m-page2-left  { left: calc(var(--u) * 230); top: calc(var(--u) * 5801); width: calc(var(--u) * 607); height: calc(var(--u) * 832); object-fit: cover; }
+.ab-m-page2-right { left: calc(var(--u) * 837); top: calc(var(--u) * 5802); width: calc(var(--u) * 600); height: calc(var(--u) * 831); object-fit: cover; }
+.ab-m-rule3 { left: calc(var(--u) * 230); width: calc(var(--u) * 1207); top: calc(var(--u) * 6754.5); }
+
+/* ==== project layout (על הפרויקט.svg; strip width 1667, column 230..1436) ==== */
+.ab-p-h1 { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 131.4); }
+.ab-p-rule1 { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 213.5); }
+.ab-p-intro { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 249.9); }
+.ab-p-letters-label { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 657); }
+.ab-p-rule2 { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 734.5); }
+.ab-grid {
+  position: absolute;
+  left: calc(var(--u) * 228);
+  top: calc(var(--u) * 857);
+  width: calc(var(--u) * 1206);
+  height: calc(var(--u) * 1328.6);
+}
+.ab-card {
+  position: absolute;
+  width: calc(var(--u) * 170.8);
+  height: calc(var(--u) * 235.2);
+  background: var(--paper);
+}
+/* cards flow RTL from the grid's top-right, 6 per row */
+.ab-card-inner {
+  position: absolute;
+  left: calc(var(--u) * 6.9);
+  top: calc(var(--u) * 24.4);
+  width: calc(var(--u) * 157);
+  height: calc(var(--u) * 185.8);
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ab-card-glyph { display: block; color: var(--paper); }
+.ab-card-glyph * { fill: currentColor; }
+/* the letter's bracketed name in the card's floor strip, hung right */
+.ab-card-cap {
+  position: absolute;
+  right: calc(var(--u) * 9.1);
+  top: calc(var(--u) * 216.2);
+  color: var(--ink);
+  font-weight: 300;
+  font-size: calc(var(--u) * 9.4);
+  letter-spacing: 0.22em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.ab-p-h2 { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 2355.9); }
+.ab-p-rule3 { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 2434.5); }
+.ab-p-design { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 2473.4); }
+/* the stam panel, cropped as the reference's pattern crops it */
+.ab-stam {
+  position: absolute;
+  left: calc(var(--u) * 235);
+  top: calc(var(--u) * 2819);
+  width: calc(var(--u) * 1199);
+  height: calc(var(--u) * 1653.7);
+  overflow: hidden;
+}
+.ab-stam img {
+  position: absolute;
+  left: 0;
+  top: calc(var(--u) * -205);
+  width: 100%;
+  height: calc(var(--u) * 1858.8);
+}
+.ab-p-cap { right: calc(var(--u) * 233.5); top: calc(var(--u) * 4508.5); }
+.ab-p-thanks-title { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 4759); }
+.ab-p-rule4 { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 4839.5); }
+.ab-p-thanks { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 4875.9); }
+.ab-p-rule5 { left: calc(var(--u) * 230); width: calc(var(--u) * 1206); top: calc(var(--u) * 5143.5); }

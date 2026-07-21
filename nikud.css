@@ -1,0 +1,200 @@
+/* ==========================================================================
+   ראש מילין — the ניקוד screen (reference: ניקוד.svg / ניקוד-1.svg).
+   Seven strips in a fixed 1407u field under the 124u bar; an open strip
+   grows onto its reading, the others share the remainder. All ink is the
+   interface's own: hairline rules, Narkiss names, the Lyon bracket gem.
+   ========================================================================== */
+.nikud {
+  --u: calc(100vw / 2850);
+  --hair: calc(100vw / 2850);
+  --ink: #101010;
+  --paper: #FDFCF8;
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--paper);
+  color: var(--ink);
+  direction: rtl;
+  font-family: "Narkiss Tam", "Editor Sans", sans-serif;
+  overflow: hidden;
+}
+
+/* entry / exit: the interface's sharp horizontal wipe (as .lp2) */
+.nikud {
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path 460ms cubic-bezier(0.83, 0, 0.17, 1);
+}
+.nikud.is-open { clip-path: inset(0 0 0 0); }
+.nikud.is-leaving { clip-path: inset(0 100% 0 0); }
+
+/* beneath the screen the opening world rests, exactly as under a letter */
+body.nikud-open .world,
+body.nikud-open .sky-soften { opacity: 0; pointer-events: none; }
+body.nikud-open .cursor-dot { background: #101010; }
+body.nikud-open .cursor-ring { border-color: rgba(16, 16, 16, 0.6); }
+
+/* the active pill — the design's state: ink fill, paper text */
+.lp2-pill--active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ==== the strips ==== */
+.nk-list {
+  position: absolute;
+  top: calc(var(--u) * 124);
+  left: 0;
+  right: 0;
+}
+.nk-strip {
+  position: relative;
+  overflow: hidden;
+  border-bottom: var(--hair) solid var(--ink);
+  cursor: pointer;
+  /* height set inline (u-scaled px) — the transition carries the accordion */
+  transition: height 400ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* the arrow: ref ink 79x79 at (38, 75.5) under the strip's rule; when the
+   strip opens it flips to its exact mirror; in a compressed strip it rides
+   up to 49.5 (the reference's second frame) */
+.nk-arrow {
+  position: absolute;
+  left: calc(var(--u) * 38);
+  top: calc(var(--u) * 75.5);
+  width: calc(var(--u) * 79);
+  height: calc(var(--u) * 79);
+  overflow: visible;
+  display: block;
+  transition: transform 400ms cubic-bezier(0.76, 0, 0.24, 1),
+              top 400ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.nk-arrow path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nk-strip.is-open .nk-arrow { transform: scaleX(-1); }
+.nk-strip.is-dim .nk-arrow { top: calc(var(--u) * 49.5); }
+
+/* the name: "[mark] קמץ" — the drawn mark inside the raised Lyon brackets
+   (the letter screens' gem system, font 60 raised 35.3), then the name in
+   the title's 96. Ref baselines: 135.5 under the rule; 130.3 compressed. */
+.nk-name {
+  position: absolute;
+  right: calc(var(--u) * 127);
+  top: calc(var(--u) * 57.1);
+  margin: 0;
+  font-family: "Narkiss Tam", "Editor Sans", sans-serif;
+  font-weight: 400;
+  font-size: calc(var(--u) * 96);
+  line-height: 1;
+  white-space: nowrap;
+  transition: top 400ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.nk-strip.is-dim .nk-name { top: calc(var(--u) * 51.9); }
+.nk-gem {
+  font-family: "Lyon Text", "Editor Sans", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: calc(var(--u) * 60);
+  position: relative;
+  top: calc(var(--u) * -35.3);
+  margin-left: calc(var(--u) * 9);
+}
+/* the mark between the brackets: one shared band (78.4 x 49, its floor 27
+   above the name's baseline); compressed strips carry it a step smaller
+   (ref: 16 -> 14.15) */
+.nk-sym {
+  width: calc(var(--u) * 78.4);
+  height: calc(var(--u) * 49);
+  vertical-align: calc(var(--u) * -8.3);
+  fill: var(--ink);
+  transition: transform 400ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.nk-strip.is-dim .nk-sym { transform: scale(0.885); }
+
+/* the reading: hung on the name's own line — its first ink line starts
+   at the name's ink top (76.7), pitch 35, ranged right at x2290.5,
+   column up to 1635 wide */
+.nk-text {
+  position: absolute;
+  top: calc(var(--u) * 71.6);
+  right: calc(var(--u) * 559.5);
+  width: calc(var(--u) * 1635);
+  font-size: calc(var(--u) * 26);
+  line-height: calc(var(--u) * 35);
+  text-align: right;
+  text-wrap: pretty;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(calc(var(--u) * 14));
+  transition: opacity 220ms linear, transform 320ms cubic-bezier(0.33, 0, 0.2, 1);
+}
+.nk-text p { margin: 0; }
+/* the שווא pair: two readings, one clear line of air between them */
+.nk-text p + p { margin-top: calc(var(--u) * 35); }
+.nk-strip.is-open .nk-text {
+  opacity: 1;
+  transform: none;
+  transition: opacity 260ms linear 140ms, transform 380ms cubic-bezier(0.33, 0, 0.2, 1) 140ms;
+}
+
+/* ==========================================================================
+   the drifting marks — the paper band the reference leaves under the last
+   strip (design frame 1530.5 -> 1603). Decoration only: it never takes a
+   pointer, never announces itself, and never touches the accordion.
+
+   The track holds two identical groups and travels exactly one group per
+   cycle (-50% of its own width), so the loop point is invisible. Only
+   `transform` animates, on its own layer — no layout, no paint.
+   ========================================================================== */
+.nk-marquee {
+  /* the band's own height, stated outright: the screen minus everything
+     above it. A percentage cannot be used here — the track has no definite
+     height for one to resolve against. */
+  --nk-band: calc(100vh - var(--u) * 1531);
+  position: absolute;
+  top: calc(var(--u) * 1531); /* directly under the last strip's rule */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center; /* the air above and below stays equal at any height */
+  direction: ltr;      /* the row is symmetric: keep the maths unmirrored */
+  pointer-events: none;
+}
+.nk-marquee-track {
+  display: flex;
+  align-items: center;
+  flex: none;
+  will-change: transform;
+  animation: nk-drift 72s linear infinite;
+}
+/* each mark keeps the gem band's own proportion, so the row reads as one
+   even typographic rhythm; it shrinks to fit a shallow band */
+.nk-mq-sym {
+  flex: none;
+  /* the gem band's 49u when the band allows it, smaller when it is shallow,
+     never below a legible floor */
+  height: clamp(
+    calc(var(--u) * 16),
+    calc(var(--nk-band) * 0.42),
+    calc(var(--u) * 49)
+  );
+  width: auto;
+  aspect-ratio: 78.4 / 49;
+  margin-right: calc(var(--u) * 96);
+  fill: var(--ink);
+}
+@keyframes nk-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+/* a reader who asks for stillness gets the row, held */
+@media (prefers-reduced-motion: reduce) {
+  .nk-marquee-track { animation: none; }
+}

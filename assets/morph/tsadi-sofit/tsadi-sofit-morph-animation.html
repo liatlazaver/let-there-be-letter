@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ץ — morph</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; cursor: pointer; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+
+/* ---- interface embed mode (?embed=1&tx&ty&tw&th) ----
+   Runs transparent over the letter screen's black field, maps the FINAL
+   letter exactly onto the given target rect (CSS px of this frame), plays
+   ONCE, and reports back to the parent when the construction lands. */
+const EMBED = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('embed') !== '1') return null;
+    const v = k => parseFloat(q.get(k));
+    const e = { tx: v('tx'), ty: v('ty'), tw: v('tw'), th: v('th') };
+    return [e.tx, e.ty, e.tw, e.th].every(isFinite) ? e : null;
+  } catch (err) { return null; }
+})();
+if (EMBED) {
+  document.documentElement.style.background = 'transparent';
+  document.body.style.background = 'transparent';
+}
+let EMBED_FIT = null;
+let embedDone = false;
+function embedFitFrom(polys, gx, gy) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const poly of polys) for (const p of poly) {
+    const x = gx(p), y = gy(p);
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  const k = Math.min(EMBED.tw / (x1 - x0), EMBED.th / (y1 - y0));
+  return { k,
+    ox: EMBED.tx + EMBED.tw / 2 - (x0 + x1) / 2 * k,
+    oy: EMBED.ty + EMBED.th / 2 - (y0 + y1) / 2 * k };
+}
+
+/* ץ — construction morph. circle → complete foundational
+   letters (canonical geometry) → rigid placement per the helper file →
+   the exact source letterform (assets/letters). */
+const SPEC = {"glyph":"ץ","fitW":460,"fitH":400,"circleR":145.78,"frames":[[[[-69.77,-121.66],[-40.44,-121.66],[-28.11,-105.78],[-28.11,-71.79],[-38.39,129.59],[-41.01,-68.87],[-44.14,-71.34],[-75.66,-71.31],[-75.66,-129.59],[-71.94,-129.59],[-69.77,-121.66]],[[21.07,-119.18],[59.5,-119.18],[75.66,-98.38],[75.66,-53.83],[41.14,5.32],[58.76,-50.02],[54.66,-53.24],[13.36,-53.22],[13.36,-129.59],[18.22,-129.59],[21.07,-119.18]]],[[[-69.05,-110.52],[-41.9,-110.52],[-30.81,-95.95],[-30.81,-64.74],[-45.08,116.45],[-42.64,-62.07],[-45.52,-64.33],[-74.45,-64.31],[-74.45,-117.81],[-71.04,-117.81],[-69.05,-110.52]],[[-14.39,-110.52],[-41.48,-110.52],[-52.63,-95.95],[-52.63,-64.74],[-45.03,117.81],[-40.8,-62.07],[-37.92,-64.33],[-8.99,-64.31],[-8.99,-117.81],[-12.4,-117.81],[-14.39,-110.52]],[[-34.29,-20.53],[39.9,-62.07],[37.02,-64.33],[8.09,-64.31],[8.09,-117.81],[11.49,-117.81],[13.48,-110.52],[41,-110.52],[51.72,-95.95],[51.72,-64.74],[-34.53,-20]],[[-34.32,-20.25],[42.64,-62.07],[45.52,-64.33],[74.45,-64.31],[74.45,-117.81],[71.05,-117.81],[69.06,-110.52],[41.44,-110.52],[30.82,-95.95],[30.82,-64.74],[-34.32,-20.25]],[[-35.69,-2.76],[51.72,-64.74],[-34.32,-20.25]]]],"units":[{"mid":[0],"final":[0,1],"T":{"cf":[-53,-80.33],"ct":[-29.42,8.25],"theta":0,"mirror":true},"inst":[[0,0],[0,1]]},{"mid":[1],"final":[2,3,4],"T":{"cf":[41.13,-83.64],"ct":[23.53,-72.66],"theta":0.7854,"mirror":false},"inst":[[0,2],[0,3],[0,4]]}],"grow":[]};
+
+/* ---- embedded-entry layout: the foundational letters open BALANCED.
+   They are pulled toward the final letter's centre so the composition stays
+   inside the black panel — but never into collision: because every start
+   contracts toward one point, the distances between letters scale exactly by
+   C, so the smallest safe C (a clear minimum gap between every pair of
+   letters, on at least one axis) is computed and used as a hard floor.
+   Contained, separated, evenly balanced; landings untouched. ---- */
+if (EMBED) (() => {
+  const bboxOf = polys => {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const poly of polys) for (const p of poly) {
+      if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
+      if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
+    }
+    return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+  };
+  const FB = bboxOf(SPEC.frames[1]);
+  const groups = SPEC.units.map(u => {
+    const polys = u.mid.map(i => SPEC.frames[0][i]);
+    return { polys, b: bboxOf(polys), cf: u.T.cf };
+  });
+  const K = Math.min(EMBED.tw / (FB.x1 - FB.x0), EMBED.th / (FB.y1 - FB.y0));
+  const OX = EMBED.tx + EMBED.tw / 2 - FB.cx * K;
+  const OY = EMBED.ty + EMBED.th / 2 - FB.cy * K;
+  const W = window.innerWidth, H = window.innerHeight;
+  const M = Math.min(W, H) * 0.03;          // containment margin
+  const GAP = Math.min(W, H) * 0.025 / K;   // min letter-to-letter gap (glyph units)
+  let Csep = 0.4;
+  for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) {
+    const a = groups[i].b, b = groups[j].b;
+    const dx = Math.abs(a.cx - b.cx), dy = Math.abs(a.cy - b.cy);
+    const needX = (a.x1 - a.x0 + b.x1 - b.x0) / 2 + GAP;
+    const needY = (a.y1 - a.y0 + b.y1 - b.y0) / 2 + GAP;
+    const cands = [];
+    if (dx > 1e-6) cands.push(needX / dx);
+    if (dy > 1e-6) cands.push(needY / dy);
+    if (!cands.length) continue;            // concentric by design — leave as is
+    const cPair = Math.min(...cands);       // the cheapest axis to stay apart on
+    if (cPair > Csep) Csep = cPair;
+  }
+  Csep = Math.min(Csep, 0.95);
+  const fits = c => groups.every(g => {
+    const dx = (1 - c) * (FB.cx - g.b.cx), dy = (1 - c) * (FB.cy - g.b.cy);
+    return OX + (g.b.x0 + dx) * K >= M && OX + (g.b.x1 + dx) * K <= W - M &&
+           OY + (g.b.y0 + dy) * K >= M && OY + (g.b.y1 + dy) * K <= H - M;
+  });
+  let C = 0.78;
+  while (C - 0.001 > Csep && !fits(C)) C -= 0.04; // contract for containment,
+  C = Math.max(C, Csep);                          // but never into collision
+  /* diagnostics for the interface-side audit */
+  const rects = groups.map(g => {
+    const dx = (1 - C) * (FB.cx - g.b.cx), dy = (1 - C) * (FB.cy - g.b.cy);
+    return { x: OX + (g.b.x0 + dx) * K, y: OY + (g.b.y0 + dy) * K,
+             w: (g.b.x1 - g.b.x0) * K, h: (g.b.y1 - g.b.y0) * K };
+  });
+  let minGap = Infinity;
+  for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+    const a = rects[i], b = rects[j];
+    const gx = Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w);
+    const gy = Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h);
+    minGap = Math.min(minGap, Math.max(gx, gy));
+  }
+  window.__layout = { C: +C.toFixed(3), Csep: +Csep.toFixed(3), panel: [W, H],
+    minGap: rects.length > 1 ? +minGap.toFixed(1) : null,
+    bounds: rects.length ? [
+      +Math.min.apply(null, rects.map(r => r.x)).toFixed(1),
+      +Math.min.apply(null, rects.map(r => r.y)).toFixed(1),
+      +Math.max.apply(null, rects.map(r => r.x + r.w)).toFixed(1),
+      +Math.max.apply(null, rects.map(r => r.y + r.h)).toFixed(1)] : null };
+  groups.forEach(g => {
+    const dx = (1 - C) * (FB.cx - g.b.cx), dy = (1 - C) * (FB.cy - g.b.cy);
+    g.polys.forEach(poly => poly.forEach(p => { p[0] += dx; p[1] += dy; }));
+    if (g.cf) { g.cf[0] += dx; g.cf[1] += dy; }
+  });
+})();
+
+/* ============================================================
+   Letter construction engine v2 — canonical-exact.
+   Identical visual language and timing to the א reference:
+     1. a white circle appears
+     2. its material divides into COMPLETE foundational letters
+     3. each letter travels/rotates/flips rigidly into the pose it
+        occupies inside the final letter
+     4. a short lock-in resolves the arrived letters into the exact
+        source letterform polygons; connectors grow in like the א
+        diagonal
+   Sharp straight-line polygons; the only soft moment is the
+   material merge at the circle split.
+   ============================================================ */
+
+const INK = '#FDFCF8';
+
+function centroid(pts) {
+  let x = 0, y = 0;
+  for (const p of pts) { x += p.x; y += p.y; }
+  return { x: x / pts.length, y: y / pts.length };
+}
+function windCW(pts) {
+  let area = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; area += a.x * b.y - b.x * a.y; }
+  return area < 0 ? pts.slice().reverse() : pts;
+}
+function alignShift(from, to) {
+  const n = from.length;
+  const cf = centroid(from), ct = centroid(to);
+  let best = 0, bestD = Infinity;
+  for (let off = 0; off < n; off++) {
+    let d = 0;
+    for (let i = 0; i < n; i++) {
+      const a = from[i], b = to[(i + off) % n];
+      const dx = (a.x - cf.x) - (b.x - ct.x);
+      const dy = (a.y - cf.y) - (b.y - ct.y);
+      d += dx * dx + dy * dy;
+    }
+    if (d < bestD) { bestD = d; best = off; }
+  }
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = to[(i + best) % n];
+  return out;
+}
+function resampleCorners(poly, N) {
+  const n = poly.length;
+  const seg = []; let L = 0;
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; const d = Math.hypot(b.x - a.x, b.y - a.y); seg.push(d); L += d; }
+  const counts = seg.map(d => Math.max(1, Math.round(N * d / L)));
+  let sum = counts.reduce((a, b) => a + b, 0);
+  while (sum > N) {
+    let mi = -1, mv = -1;
+    for (let i = 0; i < n; i++) if (counts[i] > 1) { const dens = counts[i] / seg[i]; if (dens > mv) { mv = dens; mi = i; } }
+    if (mi < 0) break; counts[mi]--; sum--;
+  }
+  while (sum < N) { let mi = 0, mv = -1; for (let i = 0; i < n; i++) { const d = seg[i] / counts[i]; if (d > mv) { mv = d; mi = i; } } counts[mi]++; sum++; }
+  const out = [];
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n], c = counts[i]; for (let j = 0; j < c; j++) { const f = j / c; out.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }); } }
+  return out;
+}
+
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+// destination blend: 0 while the piece still reads as itself, easing to 1 on
+// arrival — each component adapts to its exact final outline DURING travel,
+// so it lands precisely with no separate settle and no correction move.
+const destBlend = e => { const t = Math.min(1, Math.max(0, (e - 0.35) / 0.65)); return t * t * (3 - 2 * t); };
+function lagWeights(from, to) {
+  const cf = centroid(from), ct = centroid(to);
+  let dx = ct.x - cf.x, dy = ct.y - cf.y;
+  const mag = Math.hypot(dx, dy);
+  if (mag < 1) { dx = 0; dy = 1; } else { dx /= mag; dy /= mag; }
+  const proj = from.map(p => p.x * dx + p.y * dy);
+  const mn = Math.min(...proj), mx = Math.max(...proj);
+  const span = (mx - mn) || 1;
+  return proj.map(v => 1 - (v - mn) / span);
+}
+function splitWeights(strip) {
+  const c = centroid(strip);
+  let ux = c.x, uy = c.y;
+  const m = Math.hypot(ux, uy);
+  if (m < 1) { ux = 1; uy = 0; } else { ux /= m; uy /= m; }
+  const proj = strip.map(p => p.x * ux + p.y * uy);
+  const mn = Math.min(...proj), mx = Math.max(...proj);
+  const span = (mx - mn) || 1;
+  return proj.map(v => 1 - (v - mn) / span);
+}
+function morphShape(from, to, weights, t, lag) {
+  const n = from.length;
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const local = Math.min(1, Math.max(0, t * (1 + lag) - weights[i] * lag));
+    const e = easeInOut(local);
+    out[i] = { x: from[i].x + (to[i].x - from[i].x) * e, y: from[i].y + (to[i].y - from[i].y) * e };
+  }
+  return out;
+}
+// rotation-aware correspondence for the lock-in (arrived letter ≈ final part)
+function alignRot(from, to) {
+  const n = from.length;
+  const cf = centroid(from), ct = centroid(to);
+  let best = 0, bestR = Infinity;
+  for (let off = 0; off < n; off++) {
+    let sc = 0, sd = 0;
+    for (let i = 0; i < n; i++) {
+      const ax = from[i].x - cf.x, ay = from[i].y - cf.y;
+      const b = to[(i + off) % n];
+      sc += ax * (b.y - ct.y) - ay * (b.x - ct.x);
+      sd += ax * (b.x - ct.x) + ay * (b.y - ct.y);
+    }
+    const th = Math.atan2(sc, sd);
+    const cr = Math.cos(th), sr = Math.sin(th);
+    let res = 0;
+    for (let i = 0; i < n; i++) {
+      const ax = from[i].x - cf.x, ay = from[i].y - cf.y;
+      const b = to[(i + off) % n];
+      res += Math.hypot(ax * cr - ay * sr - (b.x - ct.x), ax * sr + ay * cr - (b.y - ct.y));
+    }
+    if (res < bestR) { bestR = res; best = off; }
+  }
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = to[(i + best) % n];
+  return out;
+}
+
+const LAG_SPLIT = 0.92;
+const LAG_BUILD = 0.22; // low vertex stagger: the lock-in reshapes each piece as
+                        // one continuous body (a high value let corners race
+                        // ahead into thin spikes).
+const GOO_RMAX = 30;
+const GOO_K = 70;
+const N_OPEN = 72;
+const SETTLE = 0.30; // last part of the build: lock-in to the exact letterform
+
+/* ---- keyframes ---- */
+const F0 = SPEC.frames[0].map(poly => windCW(poly.map(p => ({ x: p[0], y: p[1] }))));
+const F1 = SPEC.frames[1].map(poly => windCW(poly.map(p => ({ x: p[0], y: p[1] }))));
+
+/* circle → foundational letters (strip split, as in the א) */
+function polyArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p.x * q.y - q.x * p.y; }
+  return Math.abs(a) / 2;
+}
+const R = SPEC.circleR;
+function areaLeft(x) {
+  const c = Math.max(-R, Math.min(R, x));
+  return c * Math.sqrt(R * R - c * c) + R * R * Math.asin(c / R) + R * R * Math.PI / 2;
+}
+function cutAt(frac) {
+  let lo = -R, hi = R;
+  const total = Math.PI * R * R;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (areaLeft(mid) / total < frac) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+const order0 = F0.map((p, i) => ({ i, x: centroid(p).x })).sort((a, b) => a.x - b.x).map(o => o.i);
+const areas = order0.map(i => polyArea(F0[i]));
+const totalA = areas.reduce((a, b) => a + b, 0);
+const XS = [-R];
+{
+  let acc = 0;
+  for (let k = 0; k < areas.length - 1; k++) { acc += areas[k]; XS.push(cutAt(acc / totalA)); }
+  XS.push(R);
+}
+function buildStrip(x0, x1) {
+  const arcN = 26, pts = [];
+  for (let i = 0; i <= arcN; i++) { const x = x0 + (x1 - x0) * i / arcN; pts.push({ x, y: -Math.sqrt(Math.max(0, R * R - x * x)) }); }
+  for (let i = 0; i <= arcN; i++) { const x = x1 + (x0 - x1) * i / arcN; pts.push({ x, y: Math.sqrt(Math.max(0, R * R - x * x)) }); }
+  return pts;
+}
+const STRIP = new Array(F0.length);
+const TGT_N = new Array(F0.length);
+for (let s = 0; s < order0.length; s++) {
+  const strip = resampleCorners(windCW(buildStrip(XS[s], XS[s + 1])), N_OPEN);
+  STRIP[s] = strip;
+  TGT_N[s] = alignShift(strip, resampleCorners(F0[order0[s]], N_OPEN));
+}
+const W_split = STRIP.map(splitWeights);
+
+/* construction units: rigid travel + lock-in instances */
+const UNITS = SPEC.units.map(u => {
+  const cf = { x: u.T.cf[0], y: u.T.cf[1] };
+  const ct = { x: u.T.ct[0], y: u.T.ct[1] };
+  // Rotations normalized to the SHORTEST path (theta in [-pi, pi]) — no
+  // long-way spins. Mirror is animated as an opposite-direction turn instead
+  // of a horizontal scale through zero (which collapsed the piece to a sliver
+  // mid-travel); the small handedness difference resolves in the lock-in.
+  let theta = u.T.mirror ? -u.T.theta : u.T.theta;
+  theta = ((theta % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+  const midPolys = u.mid.map(i => F0[i]);
+  const poseP = (p, e) => {
+    const cx = cf.x + (ct.x - cf.x) * e;
+    const cy = cf.y + (ct.y - cf.y) * e;
+    const ang = theta * e;
+    const cr = Math.cos(ang), sr = Math.sin(ang);
+    const x = p.x - cf.x, y = p.y - cf.y;
+    return { x: cx + x * cr - y * sr, y: cy + x * sr + y * cr };
+  };
+  const pose = e => midPolys.map(pts => pts.map(p => poseP(p, e)));
+  const arrived = pose(1);
+  const inst = u.inst.map(([mi, fi]) => {
+    const A0 = resampleCorners(windCW(midPolys[mi]), N_OPEN);
+    const A = A0.map(p => poseP(p, 1));
+    const B = alignRot(A, resampleCorners(F1[fi], N_OPEN));
+    return { A0, A, B, W: lagWeights(A, B) };
+  });
+  return { midPolys, finalIdx: u.final, pose, poseP, arrived, inst, ctx: ct.x };
+});
+// stagger: rightmost unit leads (the א rule)
+const stagOrder = UNITS.map((u, i) => i).sort((a, b) => UNITS[b].ctx - UNITS[a].ctx);
+const STAG = new Array(UNITS.length);
+stagOrder.forEach((ui, k) => { STAG[ui] = k; });
+
+const GROWS = SPEC.grow.map(fi => {
+  const B = resampleCorners(windCW(F1[fi]), N_OPEN);
+  const c = centroid(B);
+  const A = B.map(() => ({ x: c.x, y: c.y }));
+  return { fi, A, B, W: lagWeights(A, B) };
+});
+
+/* ---- timeline (the א rhythm) ---- */
+const TL = {
+  circleStart: 0.10, circleDur: 0.32,
+  splitStart: 0.55, splitDur: 1.10, splitStagger: 0.10,
+  buildStart: 0.45, buildDur: 1.15, buildStagger: 0.10
+};
+const END = TL.buildStart + TL.buildStagger * Math.max(0, UNITS.length - 1) + TL.buildDur + 0.15;
+const HOLD = 2.0;
+
+/* ---- render ---- */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const off = document.createElement('canvas');
+const offctx = off.getContext('2d');
+let vw = 0, vh = 0, dpr = 1;
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  vw = window.innerWidth; vh = window.innerHeight;
+  canvas.width = vw * dpr; canvas.height = vh * dpr;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function drawShape(pts, scale, ox, oy, c) {
+  c = c || ctx;
+  c.beginPath();
+  c.moveTo(ox + pts[0].x * scale, oy + pts[0].y * scale);
+  for (let i = 1; i < pts.length; i++) c.lineTo(ox + pts[i].x * scale, oy + pts[i].y * scale);
+  c.closePath();
+  c.fill();
+}
+function drawMerged(drawFn, Rblur) {
+  if (Rblur <= 0.5) { drawFn(ctx); return; }
+  if (off.width !== canvas.width || off.height !== canvas.height) { off.width = canvas.width; off.height = canvas.height; }
+  offctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  offctx.fillStyle = '#000';
+  offctx.fillRect(0, 0, vw, vh);
+  offctx.fillStyle = '#fff';
+  drawFn(offctx);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.filter = 'blur(' + (Rblur * dpr) + 'px) contrast(' + GOO_K + ')';
+  ctx.drawImage(off, 0, 0);
+  ctx.filter = 'none';
+  ctx.restore();
+}
+const phase = (t, start, dur) => Math.min(1, Math.max(0, (t - start) / dur));
+
+const SPEED = 1.5; // v2: global 1.5x tempo — every stage scaled uniformly
+let t0 = performance.now();
+document.body.addEventListener('click', () => { t0 = performance.now(); });
+let freezeAt = null;
+window.__freeze = sec => { freezeAt = sec; };
+window.__unfreeze = () => { freezeAt = null; t0 = performance.now(); };
+window.__setT = sec => { t0 = performance.now() - sec * 1000; };
+window.__DURATION = END;
+
+function frame(now) {
+  let t = freezeAt !== null ? freezeAt : (now - t0) * SPEED / 1000;
+  const total = END + HOLD;
+  if (freezeAt === null && t > total) {
+    if (EMBED) t = END; else { t0 = now; t = 0; }
+  }
+  if (EMBED && !embedDone && t >= END) {
+    embedDone = true;
+    try { parent.postMessage({ type: 'morph-done', glyph: SPEC.glyph }, '*'); } catch (err) {}
+  }
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (EMBED) ctx.clearRect(0, 0, vw, vh);
+  else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh); }
+  let scale = Math.min(vw / SPEC.fitW, vh / SPEC.fitH);
+  let ox = vw / 2, oy = vh / 2;
+  if (EMBED) {
+    if (!EMBED_FIT) EMBED_FIT = embedFitFrom(SPEC.frames[1], p => p[0], p => p[1]);
+    scale = EMBED_FIT.k; ox = EMBED_FIT.ox; oy = EMBED_FIT.oy;
+  }
+  ctx.fillStyle = INK;
+
+  if (false) { // v2: circle opening removed — starts directly from the foundational letters
+    // ---- opening: circle → complete foundational letters ----
+    if (t < TL.splitStart) {
+      const cg = easeOut(phase(t, TL.circleStart, TL.circleDur));
+      if (cg > 0) drawMerged(c => {
+        for (let s = 0; s < STRIP.length; s++) drawShape(STRIP[s].map(p => ({ x: p.x * cg, y: p.y * cg })), scale, ox, oy, c);
+      }, 0);
+    } else {
+      const sg = phase(t, TL.splitStart, TL.splitDur + TL.splitStagger * Math.max(0, STRIP.length - 1));
+      let Rb;
+      if (sg < 0.15) Rb = GOO_RMAX * (sg / 0.15);
+      else if (sg < 0.70) Rb = GOO_RMAX * (1 - (sg - 0.15) / 0.55);
+      else Rb = 0;
+      drawMerged(c => {
+        for (let s = 0; s < STRIP.length; s++) {
+          const k = STRIP.length - 1 - s;
+          const pS = phase(t, TL.splitStart + k * TL.splitStagger, TL.splitDur);
+          drawShape(morphShape(STRIP[s], TGT_N[s], W_split[s], pS, LAG_SPLIT), scale, ox, oy, c);
+        }
+      }, Rb);
+    }
+  } else {
+    // ---- construction: letters travel into place, then lock in ----
+    for (let ui = 0; ui < UNITS.length; ui++) {
+      const u = UNITS[ui];
+      const pB = phase(t, TL.buildStart + STAG[ui] * TL.buildStagger, TL.buildDur);
+      if (pB >= 1) {
+        for (const fi of u.finalIdx) drawShape(F1[fi], scale, ox, oy);
+      } else if (pB <= 0) {
+        for (const pts of u.midPolys) drawShape(pts, scale, ox, oy);
+      } else {
+        // One continuous construction: the piece travels rigidly while easing
+        // into its exact final outline — it knows its destination, so there is
+        // no separate settle stage and no visible correction on arrival.
+        const e = easeInOut(pB);
+        const b = destBlend(e);
+        for (const it of u.inst) {
+          const pts = new Array(it.A0.length);
+          for (let i = 0; i < it.A0.length; i++) {
+            const p = u.poseP(it.A0[i], e);
+            pts[i] = { x: p.x + (it.B[i].x - p.x) * b, y: p.y + (it.B[i].y - p.y) * b };
+          }
+          drawShape(pts, scale, ox, oy);
+        }
+      }
+    }
+    // connectors grow in while the letters land
+    for (const g of GROWS) {
+      const pG = phase(t, TL.buildStart + 0.35 * TL.buildDur, TL.buildDur * 0.65);
+      if (pG >= 1) drawShape(F1[g.fi], scale, ox, oy);
+      else if (pG > 0) drawShape(morphShape(g.A, g.B, g.W, pG, LAG_BUILD), scale, ox, oy);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>

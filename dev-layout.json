@@ -1,0 +1,4 @@
+{
+  "_": "Manual layout overrides — development only. Each entry offsets an object from wherever the design already puts it; an absent entry means 'untouched'. Edit mode (E) auto-saves to localStorage; 'Export' writes this file's shape. Overwrite this file with an export to make positions the shared starting point — localStorage still wins on top of it for the local session, and 'Reset' falls back to whatever is here.",
+  "offsets": {}
+}
