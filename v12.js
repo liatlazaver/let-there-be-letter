@@ -9,14 +9,41 @@
 import { buildLettersSphere, letterGlyphs } from "./sphere.js?v=15";
 import { LETTER_ORDER, LETTER_INFO } from "./carousel.js?v=45";
 import { openLetterPage, closeLetterPage, hasLetterPage, isLetterPageOpen } from "./letterpage.js?v=103";
-import { openLetterPage2, LP2_LETTERS } from "./letterpage2.js?v=36";
+import { openLetterPage2, closeLetterPage2, isLetterPage2Open, LP2_LETTERS } from "./letterpage2.js?v=36";
 import { createField } from "./field.js?v=1";
-import { openNikud } from "./nikud.js?v=7";
-import { openAbout } from "./about.js?v=7";
+import { openNikud, closeNikud, isNikudOpen } from "./nikud.js?v=7";
+import { openAbout, closeAbout, isAboutOpen } from "./about.js?v=7";
 import { mountLogo } from "./logo.js?v=1";
+import { startInactivityReset } from "./inactivity.js?v=1";
 
 /* the brand mark stands in the top-right corner of every screen */
 mountLogo();
+
+/* ==== the inactivity reset ====
+   Two quiet minutes with no interaction anywhere, and the interface folds
+   itself home: every open screen (letter / ניקוד / אודות) closes through
+   its own leaving wipe — no reload, no jump — and the opening letter
+   composition stands ready for the next visitor. Each screen's internal
+   states (selected components, tagin, opened books, scroll) live inside
+   its root, so closing it clears them completely. */
+function resetToOpening(attempt = 0) {
+  const anyOpen = () =>
+    isLetterPage2Open() || isLetterPageOpen() || isNikudOpen() || isAboutOpen();
+  if (!anyOpen()) return;
+  closeAbout();
+  closeNikud();
+  closeLetterPage2();
+  closeLetterPage();
+  /* the letter screen refuses to close mid-accordion (its `sliding` guard);
+     in that rare race, try again shortly until everything is home */
+  if (anyOpen() && attempt < 5) setTimeout(() => resetToOpening(attempt + 1), 1600);
+}
+/* dev convenience: ?idle=6 shortens the quiet period to 6s for testing */
+const idleSecs = +(new URLSearchParams(location.search).get("idle") || 0);
+startInactivityReset({
+  timeoutMs: idleSecs > 0 ? idleSecs * 1000 : 120000,
+  reset: resetToOpening,
+});
 
 const $ = (id) => document.getElementById(id);
 const dustEl = $("dust");
